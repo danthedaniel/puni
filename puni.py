@@ -28,7 +28,7 @@ def compress_url(link):
             return 'l,' + matches[0][0] + ',' + matches[0][1]
 
 def expand_url(note, subreddit):
-    if note.link == None:
+    if note.link == '':
         return None
     else:
         parts = self.note.split(',')
