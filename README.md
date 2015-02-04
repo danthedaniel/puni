@@ -4,6 +4,7 @@ Python UserNotes Interface for Reddit
 Requirements:
 * praw
 * Python 3.4
+* user must have wiki permissions on the subreddit
 
 Usage:
 
