@@ -10,7 +10,7 @@ Usage:
 
 *Creating a usernotes object*
 
-    r = praw.Reddit(user_agent='teaearlgraycold via IDLE')
+    r = praw.Reddit(user_agent='useragent')
     r.login('username', 'password')
     sub = r.get_subreddit('subreddit')
 
