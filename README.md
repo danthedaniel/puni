@@ -7,7 +7,7 @@ Requirements:
 
 Usage:
 
-* Creating a usernotes object
+*Creating a usernotes object*
 
     r = praw.Reddit(user_agent='teaearlgraycold via IDLE')
     r.login('username', 'password')
@@ -15,13 +15,13 @@ Usage:
 
     un = puni.UserNotes(r, sub)
     
-* Adding a note
+*Adding a note*
 
     link = puni.compress_url('http://www.reddit.com/message/messages/4vjx3v')
     n = puni.Note('username','my key',int(time.time()*1000),'moderator',link,'permban')
     un.add_note(n)
 
-* Reading a user's notes
+*Reading a user's notes*
 
     notes = un.get_notes('username')
     
