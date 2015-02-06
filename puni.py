@@ -6,6 +6,12 @@ import re
 
 from requests.exceptions import HTTPError
 
+class PermissionError(Exception):
+    def __init__(self, value):
+        self.value = value
+    def __str__(self):
+        return repr(self.value)
+
 warning_types = ['none','spamwatch','spamwarn','abusewarn','ban','permban','botban']
 
 def compress_url(link):
@@ -58,6 +64,9 @@ class Note:
             self.warning = warning
         else:
             self.warning = 'none'
+
+    def __str__(self):
+        return self.username + ": " + self.note
             
 class UserNotes:
     def __init__(self, r, subreddit):
@@ -72,22 +81,35 @@ class UserNotes:
         #self.parser = HTMLParser()
 
         self.cache_timeout = 0
+        self.num_retries = 2
         self.cached_json = self.get_json()
 
-    def get_json(self):
+    def get_json(self, attempts=None):
+        if attempts == None:
+            attempts = self.num_retries
+        
         #Gets most recent version of usernotes unless cache timeout is still active
         #in which case returns the cached usernotes
         if (time.time() - self.cache_timeout) > self.r.config.cache_timeout + 1:
             self.cache_timeout = time.time()
 
             #HTTPError handling
+            #If a 403 error - throw a PermissionError
             #If a 404 error - create the wiki page
             #If a 503 error - retry
             #Otherwise, re-throw the exception
             try:
                 usernotes = self.r.get_wiki_page(self.subreddit, 'usernotes')
+<<<<<<< HEAD
+
+=======
+>>>>>>> origin/master
             except HTTPError as e:
-                if e.response.status_code == 404:
+                if e.response.status_code == 403:
+                    print('puni needs the wiki permission to read usernotes')
+                    raise PermissionError('No wiki permission')
+
+                elif e.response.status_code == 404:
                     temp_moderators = self.subreddit.get_moderators()
 
                     #Initializes usernotes with barebones JSON
@@ -101,7 +123,10 @@ class UserNotes:
                     return temp_json
 
                 elif e.response.status_code == 503:
-                    return self.get_json()
+                    if attempts != 0:
+                        return self.get_json(attempts - 1)
+                    else:
+                        return self.cached_json
 
                 else:
                     raise e
@@ -120,13 +145,26 @@ class UserNotes:
         else:
             return self.cached_json
 
-    def set_json(self, notes, reason):
+    def set_json(self, notes, reason, attempts=None):
+        if attempts == None:
+            attempts = self.num_retries
+        
         if reason == None:
             reason = ''
 
         self.cached_json = notes
-        self.r.edit_wiki_page(self.subreddit, 'usernotes', json.dumps(notes), reason)
-        
+
+        try:
+            self.r.edit_wiki_page(self.subreddit, 'usernotes', json.dumps(notes), reason)
+                
+        except HTTPError as e:
+            if e.response.status_code == 403:
+                print('puni needs the wiki permission to write to usernotes')
+
+            elif e.response.status_code == 503:
+                if attempts != 0:
+                    self.set_json(notes, reason, attempts - 1)
+
     def get_notes(self, username):
         notes = self.get_json()
 
