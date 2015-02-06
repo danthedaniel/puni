@@ -100,10 +100,7 @@ class UserNotes:
             #Otherwise, re-throw the exception
             try:
                 usernotes = self.r.get_wiki_page(self.subreddit, 'usernotes')
-<<<<<<< HEAD
 
-=======
->>>>>>> origin/master
             except HTTPError as e:
                 if e.response.status_code == 403:
                     print('puni needs the wiki permission to read usernotes')
