@@ -85,7 +85,7 @@ class UserNotes:
             #If a 503 error - retry
             #Otherwise, re-throw the exception
             try:
-                usernotes = self.r.get_wiki_page(self.subreddit, 'usernote')
+                usernotes = self.r.get_wiki_page(self.subreddit, 'usernotes')
             except HTTPError as e:
                 if e.response.status_code == 404:
                     temp_moderators = self.subreddit.get_moderators()
