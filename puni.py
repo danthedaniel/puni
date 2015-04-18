@@ -2,15 +2,10 @@ import praw
 import json
 import time
 import re
-#from HTMLParser import HTMLParser
+import puniExceptions
+from xml.sax.saxutils import unescape
 
 from requests.exceptions import HTTPError
-
-class PermissionError(Exception):
-    def __init__(self, value):
-        self.value = value
-    def __str__(self):
-        return repr(self.value)
 
 warning_types = ['none','spamwatch','spamwarn','abusewarn','ban','permban','botban']
 
@@ -50,7 +45,7 @@ def expand_url(note, subreddit):
             return None
 
 class Note:
-    def __init__(self, username, note, time=int(time.time()*1000), moderator=None, link='', warning='none'):
+    def __init__(self, username, note, moderator=None, link='', warning='none', time=int(time.time()*1000)):
         self.username = username
 
         global warning_types
@@ -83,6 +78,7 @@ class UserNotes:
         self.cache_timeout = 0
         self.num_retries = 2
         self.cached_json = self.get_json()
+        self.page_name = 'usernotes'
 
     def get_json(self, attempts=None):
         if attempts == None:
@@ -96,10 +92,10 @@ class UserNotes:
             #HTTPError handling
             #If a 403 error - throw a PermissionError
             #If a 404 error - create the wiki page
-            #If a 503 error - retry
+            #If a 502,503,504 error - retry
             #Otherwise, re-throw the exception
             try:
-                usernotes = self.r.get_wiki_page(self.subreddit, 'usernotes')
+                usernotes = self.r.get_wiki_page(self.subreddit, self.page_name)
 
             except HTTPError as e:
                 if e.response.status_code == 403:
@@ -119,24 +115,25 @@ class UserNotes:
 
                     return temp_json
 
-                elif e.response.status_code == 503:
+                elif e.response.status_code in [502, 503, 504]:
                     if attempts != 0:
                         return self.get_json(attempts - 1)
                     else:
-                        return self.cached_json
+                        try:
+                            return self.cached_json
+                        except NameError:
+                            raise ServerResponseError('Could not load initial usernotes cache due to server response')
 
                 else:
                     raise e
 
-            #unesc_usernotes = self.parser.unescape(usernotes.content_md)
-
             try:
-                notes = json.loads(usernotes.content_md)
+                notes = json.loads(unescape(usernotes.content_md)) #Remove XML entities and convert into a dict
             except ValueError:
                 return None
 
             if notes['ver'] != self.schema:
-                raise AssertionError('Schema version not v' + str(self.schema))
+                raise AssertionError('Schema version must be v' + str(self.schema))
 
             return notes
         else:
@@ -152,7 +149,7 @@ class UserNotes:
         self.cached_json = notes
 
         try:
-            self.r.edit_wiki_page(self.subreddit, 'usernotes', json.dumps(notes), reason)
+            self.r.edit_wiki_page(self.subreddit, self.page_name, json.dumps(notes), reason)
                 
         except HTTPError as e:
             if e.response.status_code == 403:
@@ -161,6 +158,8 @@ class UserNotes:
             elif e.response.status_code == 503:
                 if attempts != 0:
                     self.set_json(notes, reason, attempts - 1)
+                elif attempts == 0:
+                    raise ServerResponseError('Could not get response while writing usernotes')
 
     def get_notes(self, username):
         notes = self.get_json()
