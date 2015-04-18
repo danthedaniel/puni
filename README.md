@@ -19,7 +19,9 @@ Usage:
 *Adding a note*
 
     link = puni.compress_url('http://www.reddit.com/message/messages/4vjx3v')
-    n = puni.Note('username','reason','moderator',link,'permban') #Create given note with time set to current time
+    
+    #Create given note with time set to current time
+    n = puni.Note('username','reason','moderator',link,'permban')
     un.add_note(n)
 
 *Reading a user's notes*
