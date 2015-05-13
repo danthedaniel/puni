@@ -25,8 +25,6 @@ Usage:
     un.add_note(n)
 
 *Reading a user's notes*
-
-    notes = un.get_notes('username')
     
-    for note in notes:
+    for note in un.get_notes('username'):
         print(note.note)
