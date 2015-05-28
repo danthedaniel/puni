@@ -7,7 +7,7 @@ from xml.sax.saxutils import unescape
 
 from requests.exceptions import HTTPError
 
-warning_types = ['none','spamwatch','spamwarn','abusewarn','ban','permban','botban']
+warning_types = ['none','spamwatch','spamwarn','abusewarn','ban','permban','botban', 'gooduser']
 
 def compress_url(link):
     comments = re.compile(r'/comments/([A-Za-z\d]{6})/[^\s]+/([A-Za-z\d]{7})?')
@@ -45,7 +45,7 @@ def expand_url(note, subreddit):
             return None
 
 class Note:
-    def __init__(self, username, note, moderator=None, link='', warning='none', time=int(time.time()*1000)):
+    def __init__(self, username, note, moderator=None, link='', warning='none', time=int(time.time())):
         self.username = username
 
         global warning_types
@@ -69,7 +69,7 @@ class UserNotes:
         self.subreddit = subreddit
 
         #Supported schema version
-        self.schema = 4
+        self.schema = 5
 
         global warning_types
 
