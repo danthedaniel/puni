@@ -19,7 +19,7 @@ def compress_url(link):
         matches = re.findall(messages, link)
         
         if len(matches) == 0:
-            return ''
+            return None
         else:
             return 'm,' + matches[0]
     else:
@@ -32,7 +32,7 @@ def expand_url(note, subreddit):
     if note.link == '':
         return None
     else:
-        parts = self.note.split(',')
+        parts = note.note.split(',')
         
         if parts[0] == 'm':
             return 'https://reddit.com/message/messages/' + parts[1]
