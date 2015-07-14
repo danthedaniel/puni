@@ -3,8 +3,6 @@ import json
 import time
 import re
 import puniExceptions
-from xml.sax.saxutils import unescape
-
 from requests.exceptions import HTTPError
 
 warning_types = ['none','spamwatch','spamwarn','abusewarn','ban','permban','botban', 'gooduser']
@@ -62,7 +60,10 @@ class Note:
 
     def __str__(self):
         return self.username + ": " + self.note
-            
+
+    def __repr__(self):
+        return "Note(user_name=\'{}\')".format(self.username)
+
 class UserNotes:
     def __init__(self, r, subreddit):
         self.r = r
@@ -71,9 +72,7 @@ class UserNotes:
         #Supported schema version
         self.schema = 5
 
-        global warning_types
-
-        #self.parser = HTMLParser()
+        global warning_types 
 
         self.cache_timeout = 0
         self.num_retries = 2
@@ -128,7 +127,7 @@ class UserNotes:
                     raise e
 
             try:
-                notes = json.loads(unescape(usernotes.content_md)) #Remove XML entities and convert into a dict
+                notes = json.loads(usernotes.content_md) #Remove XML entities and convert into a dict
             except ValueError:
                 return None
 
