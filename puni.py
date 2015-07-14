@@ -74,10 +74,14 @@ class UserNotes:
 
         global warning_types 
 
-        self.cache_timeout = 0
+        self.cache_timeout = 30
+        self.last_visited = 0
         self.num_retries = 2
         self.cached_json = self.get_json()
         self.page_name = 'usernotes'
+
+    def __repr__(self):
+        return "UserNotes(subreddit=\'{}\')".format(subreddit.display_nanme)
 
     def get_json(self, attempts=None):
         if attempts == None:
@@ -85,8 +89,8 @@ class UserNotes:
         
         #Gets most recent version of usernotes unless cache timeout is still active
         #in which case returns the cached usernotes
-        if (time.time() - self.cache_timeout) > self.r.config.cache_timeout + 1:
-            self.cache_timeout = time.time()
+        if (time.time() - self.last_visited) > self.cache_timeout:
+            self.last_visited = time.time()
 
             #HTTPError handling
             #If a 403 error - throw a PermissionError
