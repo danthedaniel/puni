@@ -77,8 +77,8 @@ class UserNotes:
         self.cache_timeout = 30
         self.last_visited = 0
         self.num_retries = 2
-        self.cached_json = self.get_json()
         self.page_name = 'usernotes'
+        self.cached_json = self.get_json()
 
     def __repr__(self):
         return "UserNotes(subreddit=\'{}\')".format(subreddit.display_nanme)
