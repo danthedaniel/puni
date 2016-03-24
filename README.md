@@ -1,30 +1,39 @@
-#PUNI
+PUNI
+===
+
 Python UserNotes Interface for Reddit
 
-Requirements:
-* praw
-* Python 3.4
-* user must have wiki permissions on the subreddit
+**Requirements**:
+* [PRAW](https://github.com/praw-dev/praw)
+* Python 3.X
+* user must have wiki permissions on the subreddit and bot must be given the
+proper OAuth scopes
 
-Usage:
+*Note*: PUNI only supports usernotes of schema version 6.
+
+**Usage**:
 
 *Creating a usernotes object*
 
-    r = praw.Reddit(user_agent='useragent')
-    r.login('username', 'password')
-    sub = r.get_subreddit('subreddit')
+```python
+# First, define r as an authenticated PRAW Reddit instance
+sub = r.get_subreddit('subreddit')
 
-    un = puni.UserNotes(r, sub)
-    
+un = puni.UserNotes(r, sub)
+```
+
 *Adding a note*
 
-    link = puni.compress_url('http://www.reddit.com/message/messages/4vjx3v')
-    
-    #Create given note with time set to current time
-    n = puni.Note('username','reason','moderator',link,'permban')
-    un.add_note(n)
+```python
+#Create given note with time set to current time
+link = 'http://www.reddit.com/message/messages/4vjx3v'
+n = puni.Note('username','reason','moderator',link,'permban')
+un.add_note(n)
+```
 
 *Reading a user's notes*
-    
-    for note in un.get_notes('username'):
-        print(note.note)
+
+```python
+for note in un.get_notes('username'):
+    print(note.note)
+```
