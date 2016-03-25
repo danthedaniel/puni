@@ -85,7 +85,7 @@ class Note:
         if self.link == '':
             return ''
         else:
-            return Note.expand_url(subreddit.display_name, self.link)
+            return Note.expand_url(subreddit, self.link)
 
     @staticmethod
     def compress_url(link):
