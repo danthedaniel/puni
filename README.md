@@ -34,6 +34,9 @@ n = puni.Note('username','reason','moderator',link,'permban')
 un.add_note(n)
 ```
 
+The list of warning types (like `'permban'` as shown above), can be accessed from
+`puni.Note.warnings`.
+
 *Reading a user's notes*
 
 ```python
