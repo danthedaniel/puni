@@ -164,6 +164,7 @@ class UserNotes:
         # Supported schema version
         self.schema = 6
 
+        self.max_page_size = 524288 # Characters
         self.cache_timeout = 30
         self.last_visited = 0
         self.num_retries = 2
@@ -210,8 +211,7 @@ class UserNotes:
 
             except HTTPError as e:
                 if e.response.status_code == 403:
-                    print('puni needs the wiki permission to read usernotes')
-                    raise PermissionError('No wiki permission')
+                    raise PermissionError('PUNI needs the wiki permission to read usernotes')
 
                 # Initializes usernotes with barebones JSON
                 elif e.response.status_code == 404:
@@ -283,11 +283,15 @@ class UserNotes:
 
         try:
             compressed_json = self.compress_json(notes)
-            self.r.edit_wiki_page(self.subreddit, self.page_name, json.dumps(compressed_json), reason)
+
+            if len(compressed_json) <= self.max_page_size:
+                self.r.edit_wiki_page(self.subreddit, self.page_name, json.dumps(compressed_json), reason)
+            else:
+                raise ValueError('Usernotes page is too large (>{} characters)'.format(self.max_page_size))
 
         except HTTPError as e:
             if e.response.status_code == 403:
-                PermissionError('puni needs the wiki permission to write to usernotes')
+                PermissionError('PUNI needs the wiki permission to write to usernotes')
 
             elif e.response.status_code in [502, 503, 504]:
                 if attempts != 0:
