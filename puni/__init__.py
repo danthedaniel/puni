@@ -1,2 +1,2 @@
 from .puni import *
-from .puniExceptions import *
+from .version import __version__

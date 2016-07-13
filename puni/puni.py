@@ -1,4 +1,4 @@
-# PUNI - Python UserNotes Interface for Reddit
+# puni - Python UserNotes Interface for Reddit
 # Author: teaearlgraycold
 
 """
@@ -10,17 +10,21 @@ The UserNotes class is instantiated and used to manage the usernotes cache and
 serialization/deserialization.
 """
 
-import praw
+
 import json
 import time
 import re
 import zlib
 import base64
 import copy
+
 from requests.exceptions import HTTPError
+from .exceptions import ServerResponseError, PermissionError
+from .decorators import update_cache
+
 
 class Note:
-    warnings = ['none','spamwatch','spamwarn','abusewarn','ban','permban','botban', 'gooduser']
+    warnings = ['none', 'spamwatch', 'spamwarn', 'abusewarn', 'ban', 'permban', 'botban', 'gooduser']
 
     def __init__(self, user, note, mod=None, link='', warning='none', time=int(time.time())):
         """
@@ -57,25 +61,13 @@ class Note:
         else:
             self.warning = 'none'
 
-    @classmethod
-    def from_JSON(self, user, j):
-        """
-        An alternative constuctor used by the UserNotes class, turns the
-        original JSON content from the wiki page into a Note instance.
-
-        Arguments:
-            user: the username that the note belongs to (String)
-            j: the json content of the note (Dict)
-        """
-        return Note(user, j['n'], j['m'], j['l'], j['w'], j['t'])
-
     def __str__(self):
-        return self.username + ": " + self.note
+        return "{}: {} by {}".format(self.username, self.note, self.moderator)
 
     def __repr__(self):
         return "Note(user_name=\'{}\')".format(self.username)
 
-    def full_url(self, subreddit):
+    def full_url(self, subreddit=None):
         """
         Returns the full reddit URL associated with the usernote.
 
@@ -85,7 +77,7 @@ class Note:
         if self.link == '':
             return ''
         else:
-            return Note.expand_url(subreddit, self.link)
+            return Note.expand_url(self.link, subreddit)
 
     @staticmethod
     def compress_url(link):
@@ -98,8 +90,8 @@ class Note:
 
         Returns a String object of the shorthand URL
         """
-        comments = re.compile(r'/comments/([A-Za-z\d]{6})/[^\s]+/([A-Za-z\d]{7})?')
-        messages = re.compile(r'/message/messages/([A-Za-z\d]{6})')
+        comments = re.compile(r'/comments/([A-Za-z\d]{2,})(?:/[^\s]+/([A-Za-z\d]+))?')
+        messages = re.compile(r'/message/messages/([A-Za-z\d]+)')
 
         matches = re.findall(comments, link)
 
@@ -117,9 +109,9 @@ class Note:
                 return 'l,' + matches[0][0] + ',' + matches[0][1]
 
     @staticmethod
-    def expand_url(subreddit, short_link):
+    def expand_url(short_link, subreddit=None):
         """
-        Static method that converts a usernots URL shorthand into a full reddit
+        Static method that converts a usernote's URL shorthand into a full reddit
         URL.
 
         Arguments:
@@ -140,13 +132,16 @@ class Note:
 
             if parts[0] == 'm':
                 return message_scheme.format(parts[1])
-            if parts[0] == 'l':
+            if parts[0] == 'l' and subreddit:
                 if len(parts) > 2:
                     return comment_scheme.format(subreddit.display_name, parts[1], parts[2])
                 else:
                     return post_scheme.format(subreddit.display_name, parts[1])
+            elif not subreddit:
+                raise ValueError('Subreddit name must be provided')
             else:
                 return None
+
 
 class UserNotes:
     def __init__(self, r, subreddit):
@@ -164,15 +159,15 @@ class UserNotes:
         # Supported schema version
         self.schema = 6
 
-        self.max_page_size = 524288 # Characters
-        self.cache_timeout = 30
+        self.max_page_size = 524288  # Characters
+        self.cache_timeout = 5
         self.last_visited = 0
         self.num_retries = 2
         self.page_name = 'usernotes'
         self.cached_json = self.get_json()
 
     def __repr__(self):
-        return "UserNotes(subreddit=\'{}\')".format(subreddit.display_nanme)
+        return "UserNotes(subreddit=\'{}\')".format(self.subreddit.display_nanme)
 
     def get_json(self, attempts=None):
         """
@@ -193,11 +188,11 @@ class UserNotes:
             HTTPError if an HTTP error code besides 403, 404, 502..504 returns.
             ServerResponseError if the method exceeds its maximum retry count.
         """
-        if attempts == None:
+        if not attempts:
             attempts = self.num_retries
 
-        # Gets most recent version of usernotes unless cache timeout is still active
-        # in which case returns the cached usernotes
+        # Gets most recent version of usernotes unless cache timeout is still
+        # active in which case returns the cached usernotes
         if (time.time() - self.last_visited) > self.cache_timeout:
             self.last_visited = time.time()
 
@@ -211,22 +206,20 @@ class UserNotes:
 
             except HTTPError as e:
                 if e.response.status_code == 403:
-                    raise PermissionError('PUNI needs the wiki permission to read usernotes')
+                    raise PermissionError('puni needs the wiki permission to read usernotes')
 
                 # Initializes usernotes with barebones JSON
                 elif e.response.status_code == 404:
-                    sub_mods = self.subreddit.get_moderators()
+                    temp_json = {
+                        'ver': self.schema,
+                        'users': [],
+                        'constants': {
+                            'users': [x.name for x in self.subreddit.get_moderators()],
+                            'warnings': Note.warnings
+                        }
+                    }
 
-                    # Double quotes are necessary for valid JSON
-                    warning_types_string = str(Note.warnings).replace("\'", "\"")
-
-                    json_string = '{{"ver":{},"constants":{{"users":[],"warnings":{}}}}}'.\
-                        format(self.schema, warning_types_string)
-
-                    temp_json = json.loads(json_string)
-                    temp_json['constants']['users'] = [x.name for x in sub_mods]
-
-                    self.set_json(temp_json, 'Initializing JSON')
+                    self.set_json(temp_json, 'Initializing JSON via puni')
 
                     return temp_json
 
@@ -251,16 +244,19 @@ class UserNotes:
             if notes['ver'] != self.schema:
                 raise AssertionError('Schema must be v{}'.format(self.schema))
 
-            return self.expand_json(notes) # Make sure to decompress before returning
+            # Make sure to decompress before returning
+            decompressed_notes = self.expand_json(notes)
+
+            self.cached_json = decompressed_notes
+            return decompressed_notes
         else:
             return self.cached_json
 
-    def set_json(self, notes, reason, attempts=None):
+    def set_json(self, reason, attempts=None):
         """
-        Sends new JSON to be written to the usernotes wiki page.
+        Sends new JSON from the cache to be written to the usernotes wiki page.
 
         Arguments:
-            notes: the notes to be written to the wiki page (Dict)
             reason: the change reason that will be posted to the wiki changelog
                 (String)
             attempts: the number of HTTP requests to make if reddit returns a
@@ -273,13 +269,13 @@ class UserNotes:
             HTTPError if an HTTP error code besides 403, 404, 502..504 returns.
             ServerResponseError if the method exceeds its maximum retry count.
         """
-        if attempts == None:
+        if not attempts:
             attempts = self.num_retries
 
-        if reason == None:
+        if not reason:
             reason = ''
 
-        self.cached_json = notes
+        notes = self.cached_json
 
         try:
             compressed_json = self.compress_json(notes)
@@ -287,11 +283,12 @@ class UserNotes:
             if len(compressed_json) <= self.max_page_size:
                 self.r.edit_wiki_page(self.subreddit, self.page_name, json.dumps(compressed_json), reason)
             else:
-                raise ValueError('Usernotes page is too large (>{} characters)'.format(self.max_page_size))
+                raise ValueError('Usernotes page is too large (>{} characters)'.
+                    format(self.max_page_size))
 
         except HTTPError as e:
             if e.response.status_code == 403:
-                PermissionError('PUNI needs the wiki permission to write to usernotes')
+                PermissionError('puni needs the wiki permission to write to usernotes')
 
             elif e.response.status_code in [502, 503, 504]:
                 if attempts != 0:
@@ -302,6 +299,7 @@ class UserNotes:
             else:
                 raise e
 
+    @update_cache
     def get_notes(self, user):
         """
         Arguments:
@@ -309,14 +307,42 @@ class UserNotes:
 
         Returns a list of Note objects for the given user
         """
-        notes = self.get_json()
 
         # Try to search for all notes on a user, return an empty list if none
         # are found.
         try:
-            return [Note.from_JSON(user, x) for x in notes['users'][user]['ns']]
+            users_notes = []
+
+            for note in self.cached_json['users'][user]['ns']:
+                users_notes.append(Note(
+                    user=user,
+                    note=note['n'],
+                    mod=self.mod_from_index(note['m']),
+                    link=note['l'],
+                    warning=self.warning_from_index(note['w'])
+                ))
+
+            return users_notes
         except KeyError:
             return []
+
+    def mod_from_index(self, index):
+        """
+        Arguments:
+           index: the index in the constants array for moderators
+
+        Returns the moderator name as a string
+        """
+        return self.cached_json['constants']['users'][index]
+
+    def warning_from_index(self, index):
+        """
+        Arguments:
+           index: the index in the constants array for warning
+
+        Returns the warning as a string
+        """
+        return self.cached_json['constants']['warnings'][index]
 
     def expand_json(self, j):
         """
@@ -328,13 +354,13 @@ class UserNotes:
         Returns a Dict with the 'blob' key removed and a 'users' key added
         """
         decompressed_json = copy.copy(j)
-        decompressed_json.pop('blob', None) # Remove BLOB portion of JSON
+        decompressed_json.pop('blob', None)  # Remove BLOB portion of JSON
 
         # Decode and decompress JSON
         compressed_data = base64.b64decode(j['blob'])
         original_json = zlib.decompress(compressed_data).decode('utf-8')
 
-        decompressed_json['users'] = json.loads(original_json) # Insert users
+        decompressed_json['users'] = json.loads(original_json)  # Insert users
 
         return decompressed_json
 
@@ -348,20 +374,16 @@ class UserNotes:
         Returns a dict with the 'users' key removed and 'blob' key added
         """
         compressed_json = copy.copy(j)
+        compressed_json.pop('users', None)
 
-        try:
-            compressed_json.pop('users', None)
+        compressed_data = zlib.compress(json.dumps(j['users']).encode('utf-8'))
+        b64_data = base64.b64encode(compressed_data).decode('utf-8')
 
-            compressed_data = zlib.compress(json.dumps(j['users']).encode('utf-8'))
-            b64_data = base64.b64encode(compressed_data).decode('utf-8')
+        compressed_json['blob'] = b64_data
 
-            compressed_json['blob'] = b64_data
+        return compressed_json
 
-            return compressed_json
-        except KeyError: # Initial dummy JSON is being used
-            compressed_json['blob'] = base64.b64encode(zlib.compress('')).decode('utf-8')
-            return compressed_data
-
+    @update_cache
     def add_note(self, note):
         """
         Adds a note to the usernotes wiki page
@@ -369,14 +391,16 @@ class UserNotes:
         Arguments:
             note: the note to be added (Note)
 
+        Returns the update message for the usernotes wiki
+
         Throws:
             ValueError when the warning type of the note can not be found in the
             stored list of warnings.
         """
-        if note.moderator == None:
-            note.moderator = self.r.user.name
+        notes = self.cached_json
 
-        notes = self.get_json()
+        if not note.moderator:
+            note.moderator = self.r.user.name
 
         # Get index of moderator in mod list from usernotes
         # Add moderator to list if not already there
@@ -397,10 +421,13 @@ class UserNotes:
             else:
                 raise ValueError('Warning type not valid: ' + note.warning)
 
-        json_string = '{{"n":"{}","t":{},"m":{},"l":"{}","w":{}}}'.\
-            format(note.note, note.time, mod_index, note.link, warn_index)
-
-        new_note = json.loads(json_string)
+        new_note = {
+            'n': note.note,
+            't': note.time,
+            'm': mod_index,
+            'l': note.link,
+            'w': warn_index
+        }
 
         try:
             notes['users'][note.username]['ns'].insert(0, new_note)
@@ -409,21 +436,18 @@ class UserNotes:
             notes['users'][note.username]['ns'] = []
             notes['users'][note.username]['ns'].append(new_note)
 
-        message = '"create new note on user {}" via puni'.format(note.username)
+        return '"create new note on user {}" via puni'.format(note.username)
 
-        self.set_json(notes, message)
-
+    @update_cache
     def remove_note(self, username, index):
         """
-        Remove a single usernote from the usernotes wiki page.
+        Remove a single usernote from the usernotes
 
         Arguments:
             username: the user that for whom you're removing a note (String)
             index: the index of the note which is to be removed (Integer)
+
+        Returns the update message for the usernotes wiki
         """
-        notes = self.get_json()
-        notes['users'][username]['ns'].pop(index)
-
-        message = '"delete note #{} on user {}" via puni'.format(index, username)
-
-        self.set_json(notes, message)
+        self.cached_json['users'][username]['ns'].pop(index)
+        return '"delete note #{} on user {}" via puni'.format(index, username)
