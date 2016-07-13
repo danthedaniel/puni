@@ -13,6 +13,7 @@ def update_cache(func):
 
         ret = func(self, *args, **kwargs)
 
+        # If returning a string assume it is an update message
         if isinstance(ret, str):
             self.set_json(ret)
         else:

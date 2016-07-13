@@ -20,7 +20,7 @@ import base64
 import copy
 
 from requests.exceptions import HTTPError
-from .exceptions import ServerResponseError, PermissionError
+from .exceptions import ServerResponseError, RedditPermissionError
 from .decorators import update_cache
 
 
@@ -164,7 +164,7 @@ class UserNotes:
         self.schema = 6
 
         self.max_page_size = 524288  # Characters
-        self.cache_timeout = 5
+        self.cache_timeout = r.config.cache_timeout
         self.last_visited = 0
         self.num_retries = 2
         self.page_name = 'usernotes'
@@ -187,7 +187,7 @@ class UserNotes:
         decoded).
 
         Throws:
-            PermissionError if the authenticated reddit session does not have
+            RedditPermissionError if the authenticated reddit session does not have
             permission to access the wiki page.
             HTTPError if an HTTP error code besides 403, 404, 502..504 returns.
             ServerResponseError if the method exceeds its maximum retry count.
@@ -201,16 +201,15 @@ class UserNotes:
             self.last_visited = time.time()
 
             # HTTPError handling
-            # If a 403 error - throw a PermissionError
+            # If a 403 error - throw a RedditPermissionError
             # If a 404 error - create the wiki page
             # If a 502,503,504 error - retry
             # Otherwise, re-throw the exception
             try:
                 usernotes = self.r.get_wiki_page(self.subreddit, self.page_name)
-
             except HTTPError as e:
                 if e.response.status_code == 403:
-                    raise PermissionError('puni needs the wiki permission to read usernotes')
+                    raise RedditPermissionError('puni needs the wiki permission to read usernotes')
 
                 # Initializes usernotes with barebones JSON
                 elif e.response.status_code == 404:
@@ -246,7 +245,8 @@ class UserNotes:
                 return None
 
             if notes['ver'] != self.schema:
-                raise AssertionError('Schema must be v{}'.format(self.schema))
+                raise AssertionError(('Usernotes schema is v{}, puni is only '
+                    'equipped to handle v{}}').format(notes['ver'], self.schema))
 
             # Make sure to decompress before returning
             decompressed_notes = self.expand_json(notes)
@@ -268,7 +268,7 @@ class UserNotes:
                 (Integer)
 
         Throws:
-            PermissionError if the authenticated reddit session does not have
+            RedditPermissionError if the authenticated reddit session does not have
             permission to access the wiki page.
             HTTPError if an HTTP error code besides 403, 404, 502..504 returns.
             ServerResponseError if the method exceeds its maximum retry count.
@@ -292,7 +292,7 @@ class UserNotes:
 
         except HTTPError as e:
             if e.response.status_code == 403:
-                PermissionError('puni needs the wiki permission to write to usernotes')
+                RedditPermissionError('puni needs the wiki permission to write to usernotes')
 
             elif e.response.status_code in [502, 503, 504]:
                 if attempts != 0:
@@ -311,7 +311,6 @@ class UserNotes:
 
         Returns a list of Note objects for the given user
         """
-
         # Try to search for all notes on a user, return an empty list if none
         # are found.
         try:
@@ -329,6 +328,13 @@ class UserNotes:
             return users_notes
         except KeyError:
             return []
+
+    @update_cache
+    def get_users(self):
+        """
+        Returns a list of all users with notes
+        """
+        return list(self.cached_json['users'].keys())
 
     def mod_from_index(self, index):
         """
@@ -448,10 +454,23 @@ class UserNotes:
         Remove a single usernote from the usernotes
 
         Arguments:
-            username: the user that for whom you're removing a note (String)
-            index: the index of the note which is to be removed (Integer)
+            username: the user that for whom you're removing a note (str)
+            index: the index of the note which is to be removed (int)
 
         Returns the update message for the usernotes wiki
         """
         self.cached_json['users'][username]['ns'].pop(index)
         return '"delete note #{} on user {}" via puni'.format(index, username)
+
+    @update_cache
+    def remove_user(self, username):
+        """
+        Remove all of a user's notes
+
+        Arguments:
+            username: the user to have its notes removed (str)
+
+        Returns the update message for the usernotes wiki
+        """
+        del self.cached_json['users'][username]
+        return '"delete user {} from usernotes" via puni'.format(username)

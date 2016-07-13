@@ -3,7 +3,7 @@ puni exceptions definitions
 """
 
 
-class PermissionError(Exception):
+class RedditPermissionError(Exception):
     def __init__(self, value):
         self.value = value
 
