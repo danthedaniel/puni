@@ -27,32 +27,34 @@ from .decorators import update_cache
 class Note:
     warnings = ['none', 'spamwatch', 'spamwarn', 'abusewarn', 'ban', 'permban', 'botban', 'gooduser']
 
-    def __init__(self, user, note, mod=None, link='', warning='none', time=int(time.time())):
+    def __init__(self, user, note, subreddit=None, mod=None, link='',
+                 warning='none', time=int(time.time())):
         """
         Constuctor for the Note class.
 
         Arguments:
-            user: the username of the user the note is attached to (String)
-            note: the message attached to the note (String)
-            mod: the username of the moderator that created the note (String)
+            user: the username of the user the note is attached to (str)
+            note: the message attached to the note (str)
+            subreddit: the subreddit the note comes from (str)
+            mod: the username of the moderator that created the note (str)
             link: the URL associated with the note (can be a full reddit URL or
                 usernote's shorthand format)
-            warning: the type of warning. must be in Note.warnings (String)
-            time: a UNIX epoch timestamp in seconds (Integer)
+            warning: the type of warning. must be in Note.warnings (str)
+            time: a UNIX epoch timestamp in seconds (int)
         """
         self.username = user
-
         self.note = note
+        self.subreddit = str(subreddit) if subreddit else None
         self.time = time
         self.moderator = mod
 
         # Compress link if necessary
-        self.full_link_re = re.compile(r'^https?://(\w{1,3}\.)?reddit.com/')
-        self.compr_link_re = re.compile(r'[ml],[A-Za-z\d]{6}(,[A-Za-z\d]{7})?')
+        full_link_re = re.compile(r'^https?://(\w{1,3}\.)?reddit.com/')
+        compr_link_re = re.compile(r'[ml],[A-Za-z\d]{6}(,[A-Za-z\d]{7})?')
 
-        if self.full_link_re.match(link):
+        if full_link_re.match(link):
             self.link = Note.compress_url(link)
-        elif self.compr_link_re.match(link):
+        elif compr_link_re.match(link):
             self.link = link
         else:
             self.link = ''
@@ -63,22 +65,19 @@ class Note:
             self.warning = 'none'
 
     def __str__(self):
-        return "{}: {} by {}".format(self.username, self.note, self.moderator)
+        return "{}: {}".format(self.username, self.note)
 
     def __repr__(self):
         return "Note(user_name=\'{}\')".format(self.username)
 
-    def full_url(self, subreddit=None):
+    def full_url(self):
         """
         Returns the full reddit URL associated with the usernote.
 
         Arguments:
             subreddit: the subreddit name for the note (PRAW Subreddit object)
         """
-        if self.link == '':
-            return ''
-        else:
-            return Note.expand_url(self.link, subreddit)
+        return '' if self.link == '' else Note.expand_url(self.link, self.subreddit)
 
     @staticmethod
     def compress_url(link):
@@ -87,7 +86,7 @@ class Note:
         into the shorthand used by usernotes.
 
         Arguments:
-            link: a link to a comment, submission, or message
+            link: a link to a comment, submission, or message (str)
 
         Returns a String object of the shorthand URL
         """
@@ -117,7 +116,7 @@ class Note:
 
         Arguments:
             subreddit: the subreddit the URL is for (PRAW Subreddit object or str)
-            short_link: the compressed link from a usernote (String)
+            short_link: the compressed link from a usernote (str)
 
         Returns a String object of the full URL.
         """
@@ -125,9 +124,6 @@ class Note:
         message_scheme = 'https://reddit.com/message/messages/{}'
         comment_scheme = 'https://reddit.com/r/{}/comments/{}/-/{}'
         post_scheme = 'https://reddit.com/r/{}/comments/{}/'
-
-        if isinstance(subreddit, praw.objects.Subreddit):
-            subreddit = subreddit.display_name
 
         if short_link == '':
             return None
@@ -320,6 +316,7 @@ class UserNotes:
                 users_notes.append(Note(
                     user=user,
                     note=note['n'],
+                    subreddit=self.subreddit,
                     mod=self.mod_from_index(note['m']),
                     link=note['l'],
                     warning=self.warning_from_index(note['w'])
