@@ -11,6 +11,7 @@ serialization/deserialization.
 """
 
 
+import praw
 import json
 import time
 import re
@@ -115,7 +116,7 @@ class Note:
         URL.
 
         Arguments:
-            subreddit: the subreddit the URL is for (PRAW Subreddit object)
+            subreddit: the subreddit the URL is for (PRAW Subreddit object or str)
             short_link: the compressed link from a usernote (String)
 
         Returns a String object of the full URL.
@@ -124,6 +125,9 @@ class Note:
         message_scheme = 'https://reddit.com/message/messages/{}'
         comment_scheme = 'https://reddit.com/r/{}/comments/{}/-/{}'
         post_scheme = 'https://reddit.com/r/{}/comments/{}/'
+
+        if isinstance(subreddit, praw.objects.Subreddit):
+            subreddit = subreddit.display_name
 
         if short_link == '':
             return None
@@ -134,9 +138,9 @@ class Note:
                 return message_scheme.format(parts[1])
             if parts[0] == 'l' and subreddit:
                 if len(parts) > 2:
-                    return comment_scheme.format(subreddit.display_name, parts[1], parts[2])
+                    return comment_scheme.format(subreddit, parts[1], parts[2])
                 else:
-                    return post_scheme.format(subreddit.display_name, parts[1])
+                    return post_scheme.format(subreddit, parts[1])
             elif not subreddit:
                 raise ValueError('Subreddit name must be provided')
             else:

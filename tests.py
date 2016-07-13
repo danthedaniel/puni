@@ -32,6 +32,7 @@ def test_note_2():
 
     assert n.link == 'l,92dd8'
     assert n.full_url(pics) == 'https://reddit.com/r/pics/comments/92dd8/'
+    assert n.full_url('pics') == 'https://reddit.com/r/pics/comments/92dd8/'
 
 
 def test_note_3():
@@ -48,3 +49,4 @@ def test_note_3():
 
     assert n.link == 'l,92dd8,c0b6xx0'
     assert n.full_url(pics) == 'https://reddit.com/r/pics/comments/92dd8/-/c0b6xx0'
+    assert n.full_url('pics') == 'https://reddit.com/r/pics/comments/92dd8/-/c0b6xx0'
