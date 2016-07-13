@@ -50,7 +50,7 @@ class Note:
 
         # Compress link if necessary
         full_link_re = re.compile(r'^https?://(\w{1,3}\.)?reddit.com/')
-        compr_link_re = re.compile(r'[ml],[A-Za-z\d]{6}(,[A-Za-z\d]{7})?')
+        compr_link_re = re.compile(r'[ml],[A-Za-z\d]{2,}(,[A-Za-z\d]+)?')
 
         if full_link_re.match(link):
             self.link = Note.compress_url(link)
