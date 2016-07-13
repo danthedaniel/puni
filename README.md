@@ -43,3 +43,32 @@ The list of warning types (like `'permban'` as shown above), can be accessed fro
 for note in un.get_notes('username'):
     print(note.note)
 ```
+
+*Pruning shadowbanned and deleted users*
+
+```python
+import puni
+import praw
+
+r = praw.Reddit('puni user pruning by teaearlgraycold v0.1')
+r.login('username', 'password', disable_warning=True)
+
+sub = r.get_subreddit('my_subreddit')
+un = puni.UserNotes(r, sub)
+
+user_list = un.get_users()
+
+for user in user_list:
+    try:
+        u = r.get_redditor(user, fetch=True)
+    except:
+        print("{} is shadowbanned/deleted".format(user))
+        # User is shadowbanned or account is deleted
+        # Normally you'd use un.remove_user(), but since we are making many
+        # deletions, it's best to only make one API call for the final changes
+        # once we're at the end of the script.
+        del un.cached_json['users'][user]
+
+# Now update the usernotes
+un.set_json("Pruned users via puni")
+```

@@ -386,7 +386,7 @@ class UserNotes:
         compressed_json = copy.copy(j)
         compressed_json.pop('users', None)
 
-        compressed_data = zlib.compress(json.dumps(j['users']).encode('utf-8'))
+        compressed_data = zlib.compress(json.dumps(j['users']).encode('utf-8'), 9)
         b64_data = base64.b64encode(compressed_data).decode('utf-8')
 
         compressed_json['blob'] = b64_data
