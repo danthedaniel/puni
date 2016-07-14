@@ -1,7 +1,7 @@
 from setuptools import setup
 
 setup(name='puni',
-      version='0.2.2',
+      version='0.3.0',
       description='Python UserNotes Interface for reddit',
       classifiers=[
         'Development Status :: 3 - Alpha',
