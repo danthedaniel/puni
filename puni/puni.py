@@ -144,7 +144,7 @@ class Note:
 
 
 class UserNotes:
-    def __init__(self, r, subreddit):
+    def __init__(self, r, subreddit, lazy_start=False):
         """
         Constuctor for the UserNotes class.
 
@@ -164,7 +164,7 @@ class UserNotes:
         self.last_visited = 0
         self.num_retries = 2
         self.page_name = 'usernotes'
-        self.cached_json = self.get_json()
+        self.cached_json = {} if lazy_start else self.get_json()
 
     def __repr__(self):
         return "UserNotes(subreddit=\'{}\')".format(self.subreddit.display_nanme)
@@ -209,36 +209,21 @@ class UserNotes:
 
                 # Initializes usernotes with barebones JSON
                 elif e.response.status_code == 404:
-                    temp_json = {
-                        'ver': self.schema,
-                        'users': [],
-                        'constants': {
-                            'users': [x.name for x in self.subreddit.get_moderators()],
-                            'warnings': Note.warnings
-                        }
-                    }
-
-                    self.set_json(temp_json, 'Initializing JSON via puni')
-
-                    return temp_json
+                    return self.init_notes()
 
                 elif e.response.status_code in [502, 503, 504]:
-                    if attempts != 0:
+                    if attempts > 0:
                         return self.get_json(attempts - 1)
                     else:
                         try:
                             return self.cached_json
                         except NameError:
                             raise ServerResponseError('Could not get initial JSON')
-
                 else:
                     raise e
 
-            try:
-                # Remove XML entities and convert into a dict
-                notes = json.loads(usernotes.content_md)
-            except ValueError:
-                return None
+            # Remove XML entities and convert into a dict
+            notes = json.loads(usernotes.content_md)
 
             if notes['ver'] != self.schema:
                 raise AssertionError(('Usernotes schema is v{}, puni is only '
@@ -252,9 +237,28 @@ class UserNotes:
         else:
             return self.cached_json
 
+    def init_notes(self):
+        """
+        Sets up the UserNotes page with the initial JSON schema
+
+        Returns the initial JSON
+        """
+        self.cached_json = {
+            'ver': self.schema,
+            'users': {},
+            'constants': {
+                'users': [x.name for x in self.subreddit.get_moderators()],
+                'warnings': Note.warnings
+            }
+        }
+
+        self.set_json('Initializing JSON via puni')
+
+        return self.cached_json
+
     def set_json(self, reason, attempts=None):
         """
-        Sends new JSON from the cache to be written to the usernotes wiki page.
+        Sends the JSON from the cache to the usernotes wiki page
 
         Arguments:
             reason: the change reason that will be posted to the wiki changelog
@@ -291,9 +295,9 @@ class UserNotes:
                 RedditPermissionError('puni needs the wiki permission to write to usernotes')
 
             elif e.response.status_code in [502, 503, 504]:
-                if attempts != 0:
+                if attempts > 0:
                     self.set_json(notes, reason, attempts - 1)
-                elif attempts == 0:
+                else:
                     raise ServerResponseError('No response while writing usernotes')
 
             else:
@@ -457,6 +461,11 @@ class UserNotes:
         Returns the update message for the usernotes wiki
         """
         self.cached_json['users'][username]['ns'].pop(index)
+
+        # Go ahead and remove the user's entry if they have no more notes left
+        if len(self.cached_json['users'][username]['ns']) == 0:
+            del self.cached_json['users'][username]
+
         return '"delete note #{} on user {}" via puni'.format(index, username)
 
     @update_cache

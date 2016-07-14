@@ -15,5 +15,8 @@ setup(name='puni',
       packages=['puni'],
       install_requires=[
         'praw>=3.2.0',
+      ],tests_require = [
+        'nose',
       ],
+      test_suite="nose.collector",
       zip_safe=False)
