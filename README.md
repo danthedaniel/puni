@@ -16,6 +16,8 @@ proper OAuth scopes
 
 **Usage**:
 
+*Please read the contents of `puni/puni.py` to see all functions available through puni*
+
 *Creating a usernotes object*
 
 ```python
