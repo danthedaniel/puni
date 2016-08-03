@@ -1,7 +1,7 @@
 from setuptools import setup
 
 setup(name='puni',
-      version='0.3.0',
+      version='0.3.1',
       description='Python UserNotes Interface for reddit',
       classifiers=[
         'Development Status :: 3 - Alpha',
@@ -14,7 +14,7 @@ setup(name='puni',
       license='GPLv3',
       packages=['puni'],
       install_requires=[
-        'praw>=3.2.0',
+        'praw >=3.2.0, <4.0',
       ],tests_require = [
         'nose',
       ],
