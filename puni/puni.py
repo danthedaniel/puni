@@ -323,7 +323,8 @@ class UserNotes:
                     subreddit=self.subreddit,
                     mod=self.mod_from_index(note['m']),
                     link=note['l'],
-                    warning=self.warning_from_index(note['w'])
+                    warning=self.warning_from_index(note['w']),
+                    time=note['t']
                 ))
 
             return users_notes
