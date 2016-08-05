@@ -11,7 +11,6 @@ serialization/deserialization.
 """
 
 
-import praw
 import json
 import time
 import re
@@ -19,13 +18,13 @@ import zlib
 import base64
 import copy
 
-from requests.exceptions import HTTPError
-from .exceptions import ServerResponseError, RedditPermissionError
+from praw.errors import NotFound
 from .decorators import update_cache
 
 
-class Note:
-    warnings = ['none', 'spamwatch', 'spamwarn', 'abusewarn', 'ban', 'permban', 'botban', 'gooduser']
+class Note(object):
+    warnings = ['none', 'spamwatch', 'spamwarn', 'abusewarn',
+                'ban', 'permban', 'botban', 'gooduser']
 
     def __init__(self, user, note, subreddit=None, mod=None, link='',
                  warning='none', time=int(time.time())):
@@ -143,8 +142,11 @@ class Note:
                 return None
 
 
-class UserNotes:
-    def __init__(self, r, subreddit, lazy_start=False):
+class UserNotes(object):
+    schema = 6  # Supported schema version | XXX: to_write_schema
+    max_page_size = 524288  # Characters | XXX: Bytes
+    page_name = 'usernotes'
+    def __init__(self, r, subreddit, lazy_start=False, cache_timeout=0):
         """
         Constuctor for the UserNotes class.
 
@@ -156,92 +158,56 @@ class UserNotes:
         self.r = r
         self.subreddit = subreddit
 
-        # Supported schema version
-        self.schema = 6
-
-        self.max_page_size = 524288  # Characters
-        self.cache_timeout = r.config.cache_timeout
+        self.cache_timeout = cache_timeout or r.config.cache_timeout
         self.last_visited = 0
-        self.num_retries = 2
-        self.page_name = 'usernotes'
-        self.cached_json = {} if lazy_start else self.get_json()
+        if not lazy_start:
+            self.get_json()
 
     def __repr__(self):
-        return "UserNotes(subreddit=\'{}\')".format(self.subreddit.display_nanme)
+        return "UserNotes(subreddit=\'{}\')".format(self.subreddit.display_name)
 
-    def get_json(self, attempts=None):
+    def get_json(self):
         """
         Get either new JSON from the wiki page or return the cached JSON if less
         than the number of seconds defined in self.cache_timeout have passed.
 
-        Arguments:
-            attempts: the number of HTTP requests to make if reddit returns a
-                500 error code. Will default to the value of self.num_retries
-                (Integer)
-
         Returns a Dict representation of the usernotes (with the notes BLOB
         decoded).
 
-        Throws:
-            RedditPermissionError if the authenticated reddit session does not have
+        Raises:
+            praw.errors.Forbidden if the authenticated reddit session does not have
             permission to access the wiki page.
-            HTTPError if an HTTP error code besides 403, 404, 502..504 returns.
-            ServerResponseError if the method exceeds its maximum retry count.
+            praw.errors.HTTPException if an HTTP error code besides 404 returns.
         """
-        if not attempts:
-            attempts = self.num_retries
-
         # Gets most recent version of usernotes unless cache timeout is still
         # active in which case returns the cached usernotes
-        if (time.time() - self.last_visited) > self.cache_timeout:
+        if (not hasattr(self, 'cached_json') or
+                ((time.time() - self.last_visited) > self.cache_timeout)):
             self.last_visited = time.time()
 
-            # HTTPError handling
-            # If a 403 error - throw a RedditPermissionError
+            # HTTPException handling
             # If a 404 error - create the wiki page
-            # If a 502,503,504 error - retry
             # Otherwise, re-throw the exception
             try:
                 usernotes = self.r.get_wiki_page(self.subreddit, self.page_name)
-            except HTTPError as e:
-                if e.response.status_code == 403:
-                    raise RedditPermissionError('puni needs the wiki permission to read usernotes')
-
+                # Remove XML entities and convert into a dict
+                notes = json.loads(usernotes.content_md)
+            except NotFound:
                 # Initializes usernotes with barebones JSON
-                elif e.response.status_code == 404:
-                    return self.init_notes()
+                self.init_notes()
+            else:
+                if notes['ver'] != self.schema:
+                    raise RuntimeError('Usernotes schema is v{0}, puni '
+                        'is only equipped to handle v{1}'.format(notes['ver'],
+                                                                 self.schema))
 
-                elif e.response.status_code in [502, 503, 504]:
-                    if attempts > 0:
-                        return self.get_json(attempts - 1)
-                    else:
-                        try:
-                            return self.cached_json
-                        except NameError:
-                            raise ServerResponseError('Could not get initial JSON')
-                else:
-                    raise e
-
-            # Remove XML entities and convert into a dict
-            notes = json.loads(usernotes.content_md)
-
-            if notes['ver'] != self.schema:
-                raise AssertionError(('Usernotes schema is v{}, puni is only '
-                    'equipped to handle v{}}').format(notes['ver'], self.schema))
-
-            # Make sure to decompress before returning
-            decompressed_notes = self.expand_json(notes)
-
-            self.cached_json = decompressed_notes
-            return decompressed_notes
-        else:
-            return self.cached_json
+                # Make sure to decompress before returning
+                self.cached_json = self.expand_json(notes)
+        return self.cached_json
 
     def init_notes(self):
         """
         Sets up the UserNotes page with the initial JSON schema
-
-        Returns the initial JSON
         """
         self.cached_json = {
             'ver': self.schema,
@@ -254,54 +220,24 @@ class UserNotes:
 
         self.set_json('Initializing JSON via puni')
 
-        return self.cached_json
-
-    def set_json(self, reason, attempts=None):
+    def set_json(self, reason=''):
         """
         Sends the JSON from the cache to the usernotes wiki page
 
         Arguments:
             reason: the change reason that will be posted to the wiki changelog
                 (String)
-            attempts: the number of HTTP requests to make if reddit returns a
-                500 error code. Will default to the value of self.num_retries
-                (Integer)
-
-        Throws:
-            RedditPermissionError if the authenticated reddit session does not have
+        Raises:
+            praw.errors.Forbidden if the authenticated reddit session does not have
             permission to access the wiki page.
-            HTTPError if an HTTP error code besides 403, 404, 502..504 returns.
-            ServerResponseError if the method exceeds its maximum retry count.
+            praw.errors.HTTPException if an HTTP error code besides 404 returns.
         """
-        if not attempts:
-            attempts = self.num_retries
+        compressed_json = self.compress_json(self.cached_json)
+        if len(compressed_json) > self.max_page_size:
+            raise OverflowError('Usernotes page is too large (>{0} characters)'.
+                format(self.max_page_size))
 
-        if not reason:
-            reason = ''
-
-        notes = self.cached_json
-
-        try:
-            compressed_json = self.compress_json(notes)
-
-            if len(compressed_json) <= self.max_page_size:
-                self.r.edit_wiki_page(self.subreddit, self.page_name, json.dumps(compressed_json), reason)
-            else:
-                raise ValueError('Usernotes page is too large (>{} characters)'.
-                    format(self.max_page_size))
-
-        except HTTPError as e:
-            if e.response.status_code == 403:
-                RedditPermissionError('puni needs the wiki permission to write to usernotes')
-
-            elif e.response.status_code in [502, 503, 504]:
-                if attempts > 0:
-                    self.set_json(notes, reason, attempts - 1)
-                else:
-                    raise ServerResponseError('No response while writing usernotes')
-
-            else:
-                raise e
+        self.r.edit_wiki_page(self.subreddit, self.page_name, json.dumps(compressed_json), reason)
 
     @update_cache
     def get_notes(self, user):
@@ -356,7 +292,8 @@ class UserNotes:
         """
         return self.cached_json['constants']['warnings'][index]
 
-    def expand_json(self, j):
+    @staticmethod
+    def expand_json(j):
         """
         Decompress the BLOB portion of the usernotes
 
@@ -376,7 +313,8 @@ class UserNotes:
 
         return decompressed_json
 
-    def compress_json(self, j):
+    @staticmethod
+    def compress_json(j):
         """
         Compress the BLOB data portion of the usernotes
 
@@ -405,7 +343,7 @@ class UserNotes:
 
         Returns the update message for the usernotes wiki
 
-        Throws:
+        Raises:
             ValueError when the warning type of the note can not be found in the
             stored list of warnings.
         """
@@ -431,7 +369,7 @@ class UserNotes:
                 notes['constants']['warnings'].append(note.warning)
                 warn_index = notes['constants']['warnings'].index(note.warning)
             else:
-                raise ValueError('Warning type not valid: ' + note.warning)
+                raise TypeError('Warning type not valid: ' + note.warning)
 
         new_note = {
             'n': note.note,
