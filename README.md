@@ -4,7 +4,7 @@ PUNI
 Python UserNotes Interface for Reddit.
 
 Built to interact with the user notes data store from the reddit moderator
-toolbox
+toolbox ([spec here](https://github.com/creesch/reddit-moderator-toolbox/wiki/JSON:-usernotes)).
 
 **Requirements**:
 * [PRAW](https://github.com/praw-dev/praw)
