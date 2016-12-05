@@ -1,6 +1,8 @@
 PUNI
 ===
 
+[![PyPI version](https://badge.fury.io/py/puni.svg)](https://badge.fury.io/py/puni)
+
 Python UserNotes Interface for Reddit.
 
 Built to interact with the user notes data store from the reddit moderator
