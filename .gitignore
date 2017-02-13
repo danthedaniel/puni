@@ -85,4 +85,4 @@ ENV/
 .spyderproject
 
 test_bot.py
-oauth.ini
+oauth.json

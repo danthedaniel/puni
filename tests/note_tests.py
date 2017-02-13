@@ -1,11 +1,10 @@
 import praw
 from puni import Note
 
-r = praw.Reddit('puni nosetests')
-
 
 def test_note():
     """Ensure Note class compresses URL for messages"""
+
     n = Note(
         user='teaearlgraycold',
         note='creator of puni',
@@ -21,6 +20,7 @@ def test_note():
 
 def test_note_2():
     """Ensure Note class compresses URL for submissions"""
+
     n = Note(
         user='teaearlgraycold',
         note='creator of puni',
@@ -36,6 +36,7 @@ def test_note_2():
 
 def test_note_3():
     """Ensure Note class compresses URL for comments"""
+
     n = Note(
         user='teaearlgraycold',
         note='creator of puni',
@@ -51,6 +52,7 @@ def test_note_3():
 
 def test_note_4():
     """Ensure Note class throws exception when expanding a url without a specified subreddit"""
+
     n = Note(
         user='teaearlgraycold',
         note='creator of puni',

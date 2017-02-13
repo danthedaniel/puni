@@ -18,13 +18,21 @@ import zlib
 import base64
 import copy
 
-from praw.errors import NotFound
+from prawcore.exceptions import NotFound
 from .decorators import update_cache
 
 
 class Note(object):
-    warnings = ['none', 'spamwatch', 'spamwarn', 'abusewarn',
-                'ban', 'permban', 'botban', 'gooduser']
+    warnings = [
+        'none',
+        'spamwatch',
+        'spamwarn',
+        'abusewarn',
+        'ban',
+        'permban',
+        'botban',
+        'gooduser'
+    ]
 
     def __init__(self, user, note, subreddit=None, mod=None, link='',
                  warning='none', time=int(time.time())):
@@ -64,10 +72,10 @@ class Note(object):
             self.warning = 'none'
 
     def __str__(self):
-        return "{}: {}".format(self.username, self.note)
+        return '{}: {}'.format(self.username, self.note)
 
     def __repr__(self):
-        return "Note(user_name=\'{}\')".format(self.username)
+        return 'Note(user_name=\'{}\')'.format(self.username)
 
     def full_url(self):
         """
@@ -76,7 +84,10 @@ class Note(object):
         Arguments:
             subreddit: the subreddit name for the note (PRAW Subreddit object)
         """
-        return '' if self.link == '' else Note.expand_url(self.link, self.subreddit)
+        if self.link == '':
+            return ''
+        else:
+            Note.expand_url(self.link, self.subreddit)
 
     @staticmethod
     def compress_url(link):
@@ -89,13 +100,13 @@ class Note(object):
 
         Returns a String object of the shorthand URL
         """
-        comments = re.compile(r'/comments/([A-Za-z\d]{2,})(?:/[^\s]+/([A-Za-z\d]+))?')
-        messages = re.compile(r'/message/messages/([A-Za-z\d]+)')
+        comment_re = re.compile(r'/comments/([A-Za-z\d]{2,})(?:/[^\s]+/([A-Za-z\d]+))?')
+        message_re = re.compile(r'/message/messages/([A-Za-z\d]+)')
 
-        matches = re.findall(comments, link)
+        matches = re.findall(c_reg, link)
 
         if len(matches) == 0:
-            matches = re.findall(messages, link)
+            matches = re.findall(m_reg, link)
 
             if len(matches) == 0:
                 return None
@@ -143,10 +154,12 @@ class Note(object):
 
 
 class UserNotes(object):
-    schema = 6  # Supported schema version | XXX: to_write_schema
-    max_page_size = 524288  # Characters | XXX: Bytes
+    schema = 6  # Supported schema version
+    max_page_size = 524288  # Characters
+    zlib_compression_strength = 9
     page_name = 'usernotes'
-    def __init__(self, r, subreddit, lazy_start=False, cache_timeout=0):
+
+    def __init__(self, r, subreddit, lazy_start=False):
         """
         Constuctor for the UserNotes class.
 
@@ -158,8 +171,6 @@ class UserNotes(object):
         self.r = r
         self.subreddit = subreddit
 
-        self.cache_timeout = cache_timeout or r.config.cache_timeout
-        self.last_visited = 0
         if not lazy_start:
             self.get_json()
 
@@ -168,8 +179,7 @@ class UserNotes(object):
 
     def get_json(self):
         """
-        Get either new JSON from the wiki page or return the cached JSON if less
-        than the number of seconds defined in self.cache_timeout have passed.
+        Get the JSON stored on the usernotes wiki page.
 
         Returns a Dict representation of the usernotes (with the notes BLOB
         decoded).
@@ -179,30 +189,21 @@ class UserNotes(object):
             permission to access the wiki page.
             praw.errors.HTTPException if an HTTP error code besides 404 returns.
         """
-        # Gets most recent version of usernotes unless cache timeout is still
-        # active in which case returns the cached usernotes
-        if (not hasattr(self, 'cached_json') or
-                ((time.time() - self.last_visited) > self.cache_timeout)):
-            self.last_visited = time.time()
 
-            # HTTPException handling
-            # If a 404 error - create the wiki page
-            # Otherwise, re-throw the exception
-            try:
-                usernotes = self.r.get_wiki_page(self.subreddit, self.page_name)
-                # Remove XML entities and convert into a dict
-                notes = json.loads(usernotes.content_md)
-            except NotFound:
-                # Initializes usernotes with barebones JSON
-                self.init_notes()
-            else:
-                if notes['ver'] != self.schema:
-                    raise RuntimeError('Usernotes schema is v{0}, puni '
-                        'is only equipped to handle v{1}'.format(notes['ver'],
-                                                                 self.schema))
+        try:
+            usernotes = self.subreddit.wiki[self.page_name].content_md
+            notes = json.loads(usernotes.content_md)
+        except NotFound:
+            self.init_notes()
+        else:
+            if notes['ver'] != self.schema:
+                raise RuntimeError(
+                    'Usernotes schema is v{0}, puni requires v{1}'.
+                    format(notes['ver'], self.schema)
+                )
 
-                # Make sure to decompress before returning
-                self.cached_json = self.expand_json(notes)
+            self.cached_json = self.expand_json(notes)
+
         return self.cached_json
 
     def init_notes(self):
@@ -213,14 +214,14 @@ class UserNotes(object):
             'ver': self.schema,
             'users': {},
             'constants': {
-                'users': [x.name for x in self.subreddit.get_moderators()],
+                'users': [x.name for x in self.subreddit.moderator()],
                 'warnings': Note.warnings
             }
         }
 
-        self.set_json('Initializing JSON via puni')
+        self.set_json('Initializing JSON via puni', True)
 
-    def set_json(self, reason=''):
+    def set_json(self, reason='', new_page=False):
         """
         Sends the JSON from the cache to the usernotes wiki page
 
@@ -233,11 +234,24 @@ class UserNotes(object):
             praw.errors.HTTPException if an HTTP error code besides 404 returns.
         """
         compressed_json = self.compress_json(self.cached_json)
-        if len(compressed_json) > self.max_page_size:
-            raise OverflowError('Usernotes page is too large (>{0} characters)'.
-                format(self.max_page_size))
 
-        self.r.edit_wiki_page(self.subreddit, self.page_name, json.dumps(compressed_json), reason)
+        if len(compressed_json) > self.max_page_size:
+            raise OverflowError(
+                'Usernotes page is too large (>{0} characters)'.
+                format(self.max_page_size)
+            )
+
+        if new_page:
+            self.subreddit.wiki.create(
+                self.page_name,
+                json.dumps(compressed_json),
+                reason
+            )
+        else:
+            self.subreddit.wiki[self.page_name].edit(
+                json.dumps(compressed_json),
+                reason
+            )
 
     @update_cache
     def get_notes(self, user):
@@ -292,7 +306,6 @@ class UserNotes(object):
         """
         return self.cached_json['constants']['warnings'][index]
 
-    @staticmethod
     def expand_json(j):
         """
         Decompress the BLOB portion of the usernotes
@@ -313,7 +326,6 @@ class UserNotes(object):
 
         return decompressed_json
 
-    @staticmethod
     def compress_json(j):
         """
         Compress the BLOB data portion of the usernotes
@@ -326,7 +338,10 @@ class UserNotes(object):
         compressed_json = copy.copy(j)
         compressed_json.pop('users', None)
 
-        compressed_data = zlib.compress(json.dumps(j['users']).encode('utf-8'), 9)
+        compressed_data = zlib.compress(
+            json.dumps(j['users']).encode('utf-8'),
+            self.zlib_compression_strength
+        )
         b64_data = base64.b64encode(compressed_data).decode('utf-8')
 
         compressed_json['blob'] = b64_data
@@ -350,7 +365,7 @@ class UserNotes(object):
         notes = self.cached_json
 
         if not note.moderator:
-            note.moderator = self.r.user.name
+            note.moderator = self.r.user.me().name
 
         # Get index of moderator in mod list from usernotes
         # Add moderator to list if not already there

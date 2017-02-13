@@ -11,8 +11,6 @@ toolbox ([spec here](https://github.com/creesch/reddit-moderator-toolbox/wiki/JS
 **Requirements**:
 * [PRAW](https://github.com/praw-dev/praw)
 * Python 3.X
-* user must have wiki permissions on the subreddit and bot must be given the
-proper OAuth scopes
 
 *Note*: PUNI only supports usernotes of schema version 6.
 
@@ -24,7 +22,7 @@ proper OAuth scopes
 
 ```python
 # First, define r as an authenticated PRAW Reddit instance
-sub = r.get_subreddit('subreddit')
+sub = r.subreddit('subreddit')
 
 un = puni.UserNotes(r, sub)
 ```
@@ -34,7 +32,7 @@ un = puni.UserNotes(r, sub)
 ```python
 #Create given note with time set to current time
 link = 'http://www.reddit.com/message/messages/4vjx3v'
-n = puni.Note('username','reason','moderator',link,'permban')
+n = puni.Note('username', 'reason', 'moderator', link, 'permban')
 un.add_note(n)
 ```
 
@@ -54,17 +52,16 @@ for note in un.get_notes('username'):
 import puni
 import praw
 
-r = praw.Reddit('puni user pruning by teaearlgraycold v0.1')
-r.login('username', 'password', disable_warning=True)
+r = praw.Reddit(...)
 
-sub = r.get_subreddit('my_subreddit')
+sub = r.subreddit('my_subreddit')
 un = puni.UserNotes(r, sub)
 
 user_list = un.get_users()
 
 for user in user_list:
     try:
-        u = r.get_redditor(user, fetch=True)
+        u = r.redditor(user).fullname
     except:
         print("{} is shadowbanned/deleted".format(user))
         # User is shadowbanned or account is deleted

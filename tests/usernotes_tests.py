@@ -1,17 +1,20 @@
 import os
 import random
+import json
 from time import sleep
 
 import praw
-import OAuth2Util
 from puni import UserNotes, Note
 from nose import with_setup
 
-r = praw.Reddit('puni nosetests')
-ini_path = os.path.abspath(os.path.join(os.path.dirname( __file__ ), 'oauth.ini'))
-o = OAuth2Util.OAuth2Util(r, configfile=ini_path)
+# Read in config file
+config_path = os.path.abspath(os.path.join(os.path.dirname(__file__), 'oauth.json'))
+config = json.loads(open(config_path, 'r').read())
+config['user_agent'] = 'puni nosetests'
 
-my_sub = r.get_subreddit('teaearlgraycold')
+# Instantiate Reddit and Subreddit objects
+r = praw.Reddit(**config)
+my_sub = r.subreddit('teaearlgraycold')
 
 
 def setup_short_timeout():
@@ -29,10 +32,11 @@ def test_init_notes():
     un = UserNotes(r, my_sub)
     un.init_notes()
     stored_json = un.get_json()
+    moderators = [x.name for x in self.subreddit.moderator()]
 
     assert stored_json['ver'] == un.schema
     assert stored_json['users'] == {}
-    assert stored_json['constants']['users'] == [x.name for x in my_sub.get_moderators()]
+    assert stored_json['constants']['users'] == moderators
     assert stored_json['constants']['warnings'] == Note.warnings
 
 
