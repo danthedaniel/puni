@@ -252,6 +252,8 @@ class UserNotes(object):
                 json.dumps(compressed_json),
                 reason
             )
+            # Set the page as hidden and available to moderators only
+            self.subreddit.wiki[self.page_name].mod.update(False, permlevel=2)
         else:
             self.subreddit.wiki[self.page_name].edit(
                 json.dumps(compressed_json),
