@@ -1,17 +1,16 @@
 import os
 import random
-import json
-
 import praw
 from puni import UserNotes, Note
 
-# Read in config file
-config_path = os.path.abspath(os.path.join(os.path.dirname(__file__), 'oauth.json'))
-config = json.loads(open(config_path, 'r').read())
-config['user_agent'] = 'puni nosetests'
-
 # Instantiate Reddit and Subreddit objects
-r = praw.Reddit(**config)
+r = praw.Reddit(
+    client_id=os.environ['CLIENT_ID'],
+    client_secret=os.environ['CLIENT_SECRET'],
+    username=os.environ['USERNAME'],
+    password=os.environ['PASSWORD'],
+    user_agent='puni nosetests'
+)
 my_sub = r.subreddit('teaearlgraycold')
 
 

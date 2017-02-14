@@ -1,0 +1,9 @@
+language: python
+python:
+    - "3.6"
+install: source ./ci/travis_install.sh
+script: bash ./ci/travis_test.sh
+cache: apt
+sudo: false
+after_success:
+    - coveralls

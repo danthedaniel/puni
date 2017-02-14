@@ -1,7 +1,7 @@
 PUNI
 ===
 
-[![PyPI version](https://badge.fury.io/py/puni.svg)](https://badge.fury.io/py/puni)
+[![PyPI version](https://badge.fury.io/py/puni.svg)](https://badge.fury.io/py/puni) [![Coverage Status](https://coveralls.io/repos/github/teaearlgraycold/puni/badge.svg?branch=master)](https://coveralls.io/github/teaearlgraycold/puni?branch=master) [![Build Status](https://travis-ci.org/teaearlgraycold/puni.svg?branch=master)](https://travis-ci.org/teaearlgraycold/puni)
 
 Python UserNotes Interface for Reddit.
 
@@ -16,7 +16,7 @@ toolbox ([spec here](https://github.com/creesch/reddit-moderator-toolbox/wiki/JS
 
 **Usage**:
 
-*Please read the contents of `puni/puni.py` to see all functions available through puni*
+*Please read the contents of `puni/base.py` to see all functions available through puni*
 
 *Creating a usernotes object*
 

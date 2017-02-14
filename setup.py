@@ -5,7 +5,7 @@ from setuptools import setup
 PACKAGE_NAME = 'puni'
 HERE = path.abspath(path.dirname(__file__))
 
-with open(path.join(HERE, PACKAGE_NAME, 'version.py'), encoding='utf-8') as fp:
+with open(path.join(HERE, PACKAGE_NAME, 'version.py'), 'r') as fp:
     VERSION = search('__version__ = \'([^\']+)\'', fp.read()).group(1)
 
 setup(
