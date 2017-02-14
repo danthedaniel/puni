@@ -19,10 +19,12 @@ import base64
 import copy
 
 from prawcore.exceptions import NotFound
-from .decorators import update_cache
+from puni.decorators import update_cache
 
 
 class Note(object):
+    """Class that represents an individual usernote"""
+
     warnings = [
         'none',
         'spamwatch',
@@ -35,7 +37,7 @@ class Note(object):
     ]
 
     def __init__(self, user, note, subreddit=None, mod=None, link='',
-                 warning='none', time=int(time.time())):
+                 warning='none', note_time=int(time.time())):
         """
         Constuctor for the Note class.
 
@@ -52,7 +54,7 @@ class Note(object):
         self.username = user
         self.note = note
         self.subreddit = str(subreddit) if subreddit else None
-        self.time = time
+        self.time = note_time
         self.moderator = mod
 
         # Compress link if necessary
@@ -87,7 +89,7 @@ class Note(object):
         if self.link == '':
             return ''
         else:
-            Note.expand_url(self.link, self.subreddit)
+            return Note.expand_url(self.link, self.subreddit)
 
     @staticmethod
     def compress_url(link):
@@ -103,10 +105,10 @@ class Note(object):
         comment_re = re.compile(r'/comments/([A-Za-z\d]{2,})(?:/[^\s]+/([A-Za-z\d]+))?')
         message_re = re.compile(r'/message/messages/([A-Za-z\d]+)')
 
-        matches = re.findall(c_reg, link)
+        matches = re.findall(comment_re, link)
 
         if len(matches) == 0:
-            matches = re.findall(m_reg, link)
+            matches = re.findall(message_re, link)
 
             if len(matches) == 0:
                 return None
@@ -154,6 +156,8 @@ class Note(object):
 
 
 class UserNotes(object):
+    """Class that represents an entire usernotes wiki page"""
+
     schema = 6  # Supported schema version
     max_page_size = 524288  # Characters
     zlib_compression_strength = 9
@@ -170,6 +174,7 @@ class UserNotes(object):
         """
         self.r = r
         self.subreddit = subreddit
+        self.cached_json = {}
 
         if not lazy_start:
             self.get_json()
@@ -192,7 +197,7 @@ class UserNotes(object):
 
         try:
             usernotes = self.subreddit.wiki[self.page_name].content_md
-            notes = json.loads(usernotes.content_md)
+            notes = json.loads(usernotes)
         except NotFound:
             self.init_notes()
         else:
@@ -274,7 +279,7 @@ class UserNotes(object):
                     mod=self.mod_from_index(note['m']),
                     link=note['l'],
                     warning=self.warning_from_index(note['w']),
-                    time=note['t']
+                    note_time=note['t']
                 ))
 
             return users_notes
@@ -306,7 +311,7 @@ class UserNotes(object):
         """
         return self.cached_json['constants']['warnings'][index]
 
-    def expand_json(j):
+    def expand_json(self, j):
         """
         Decompress the BLOB portion of the usernotes
 
@@ -326,7 +331,7 @@ class UserNotes(object):
 
         return decompressed_json
 
-    def compress_json(j):
+    def compress_json(self, j):
         """
         Compress the BLOB data portion of the usernotes
 

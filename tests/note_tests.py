@@ -1,4 +1,3 @@
-import praw
 from puni import Note
 
 
