@@ -11,7 +11,6 @@ toolbox ([spec here](https://github.com/creesch/reddit-moderator-toolbox/wiki/JS
 
 **Requirements**:
 * [PRAW](https://github.com/praw-dev/praw)
-* Python 3.X
 
 *Note*: PUNI only supports usernotes of schema version 6.
 

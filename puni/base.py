@@ -1,13 +1,18 @@
-# puni - Python UserNotes Interface for Reddit
-# Author: teaearlgraycold
-
 """
-Contains two classes, Note and UserNotes. The Note class is used when de-
-serializing the JSON notes from reddit, and should be the only interface used
-when reading from/writing to the usernotes wiki page.
+Copyright 2017 teaearlgraycold
 
-The UserNotes class is instantiated and used to manage the usernotes cache and
-serialization/deserialization.
+This file is part of puni
+
+puni is free software: you can redistribute it and/or
+modify it under the terms of the GNU General Public License as published by the
+Free Software Foundation, either version 3 of the License, or (at your option)
+any later version.
+
+puni is distributed in the hope that it will be useful, but
+WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more
+details. You should have received a copy of the GNU General Public License along
+with puni. If not, see http://www.gnu.org/licenses/.
 """
 
 
@@ -47,7 +52,7 @@ class Note(object):
             subreddit: the subreddit the note comes from (str)
             mod: the username of the moderator that created the note (str)
             link: the URL associated with the note (can be a full reddit URL or
-                usernote's shorthand format)
+                usernote's shorthand format) (str)
             warning: the type of warning. must be in Note.warnings (str)
             time: a UNIX epoch timestamp in seconds (int)
         """
@@ -87,7 +92,7 @@ class Note(object):
             subreddit: the subreddit name for the note (PRAW Subreddit object)
         """
         if self.link == '':
-            return ''
+            return None
         else:
             return Note.expand_url(self.link, self.subreddit)
 
@@ -186,7 +191,7 @@ class UserNotes(object):
         """
         Get the JSON stored on the usernotes wiki page.
 
-        Returns a Dict representation of the usernotes (with the notes BLOB
+        Returns a dict representation of the usernotes (with the notes BLOB
         decoded).
 
         Raises:
@@ -232,7 +237,7 @@ class UserNotes(object):
 
         Arguments:
             reason: the change reason that will be posted to the wiki changelog
-                (String)
+                (str)
         Raises:
             praw.errors.Forbidden if the authenticated reddit session does not have
             permission to access the wiki page.
@@ -298,7 +303,7 @@ class UserNotes(object):
     def mod_from_index(self, index):
         """
         Arguments:
-           index: the index in the constants array for moderators
+           index: the index in the constants array for moderators (int)
 
         Returns the moderator name as a string
         """
@@ -307,7 +312,7 @@ class UserNotes(object):
     def warning_from_index(self, index):
         """
         Arguments:
-           index: the index in the constants array for warning
+           index: the index in the constants array for warning (int)
 
         Returns the warning as a string
         """
@@ -318,7 +323,7 @@ class UserNotes(object):
         Decompress the BLOB portion of the usernotes
 
         Arguments:
-            j: the JSON returned from the wiki page (Dict)
+            j: the JSON returned from the wiki page (dict)
 
         Returns a Dict with the 'blob' key removed and a 'users' key added
         """
@@ -338,7 +343,7 @@ class UserNotes(object):
         Compress the BLOB data portion of the usernotes
 
         Arguments:
-            j: the JSON in Schema v5 format
+            j: the JSON in Schema v5 format (dict)
 
         Returns a dict with the 'users' key removed and 'blob' key added
         """
