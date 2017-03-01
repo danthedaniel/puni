@@ -17,7 +17,7 @@ toolbox ([spec here](https://github.com/creesch/reddit-moderator-toolbox/wiki/JS
 
 **Usage**:
 
-*Please read the contents of `puni/base.py` to see all functions available through puni*
+[Full documentation](https://github.com/teaearlgraycold/puni/wiki/Documentation).
 
 *Creating a usernotes object*
 
