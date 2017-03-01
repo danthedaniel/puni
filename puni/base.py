@@ -243,7 +243,7 @@ class UserNotes(object):
             permission to access the wiki page.
             praw.errors.HTTPException if an HTTP error code besides 404 returns.
         """
-        compressed_json = self.compress_json(self.cached_json)
+        compressed_json = json.dumps(self.compress_json(self.cached_json))
 
         if len(compressed_json) > self.max_page_size:
             raise OverflowError(
@@ -254,14 +254,14 @@ class UserNotes(object):
         if new_page:
             self.subreddit.wiki.create(
                 self.page_name,
-                json.dumps(compressed_json),
+                compressed_json,
                 reason
             )
             # Set the page as hidden and available to moderators only
             self.subreddit.wiki[self.page_name].mod.update(False, permlevel=2)
         else:
             self.subreddit.wiki[self.page_name].edit(
-                json.dumps(compressed_json),
+                compressed_json,
                 reason
             )
 
