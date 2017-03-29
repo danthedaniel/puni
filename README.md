@@ -66,7 +66,7 @@ for user in un.get_users():
     except:
         print("{} is shadowbanned/deleted".format(user))
         # To prevent unnecessary API requests, you need to specify remove_user
-        # as lazy. The
+        # as lazy.
         un.remove_user(user, lazy=True)
 
 # Now update the usernotes
