@@ -28,7 +28,7 @@ from puni.decorators import update_cache
 
 
 class Note(object):
-    """Class that represents an individual usernote"""
+    """Represents an individual usernote"""
 
     warnings = [
         'none',
@@ -43,8 +43,7 @@ class Note(object):
 
     def __init__(self, user, note, subreddit=None, mod=None, link='',
                  warning='none', note_time=int(time.time())):
-        """
-        Constuctor for the Note class.
+        """Constuctor for the Note class.
 
         Arguments:
             user: the username of the user the note is attached to (str)
@@ -67,7 +66,7 @@ class Note(object):
         compr_link_re = re.compile(r'[ml],[A-Za-z\d]{2,}(,[A-Za-z\d]+)?')
 
         if full_link_re.match(link):
-            self.link = Note.compress_url(link)
+            self.link = Note._compress_url(link)
         elif compr_link_re.match(link):
             self.link = link
         else:
@@ -82,11 +81,10 @@ class Note(object):
         return '{}: {}'.format(self.username, self.note)
 
     def __repr__(self):
-        return 'Note(user_name=\'{}\')'.format(self.username)
+        return 'Note(username=\'{}\')'.format(self.username)
 
     def full_url(self):
-        """
-        Returns the full reddit URL associated with the usernote.
+        """Returns the full reddit URL associated with the usernote.
 
         Arguments:
             subreddit: the subreddit name for the note (PRAW Subreddit object)
@@ -94,22 +92,20 @@ class Note(object):
         if self.link == '':
             return None
         else:
-            return Note.expand_url(self.link, self.subreddit)
+            return Note._expand_url(self.link, self.subreddit)
 
     @staticmethod
-    def compress_url(link):
-        """
-        Static method that converts a reddit URL for a post, comment, or message
-        into the shorthand used by usernotes.
+    def _compress_url(link):
+        """Static method that converts a reddit URL for a post, comment, or
+        message into the shorthand used by usernotes.
 
         Arguments:
             link: a link to a comment, submission, or message (str)
 
-        Returns a String object of the shorthand URL
+        Returns a String of the shorthand URL
         """
         comment_re = re.compile(r'/comments/([A-Za-z\d]{2,})(?:/[^\s]+/([A-Za-z\d]+))?')
         message_re = re.compile(r'/message/messages/([A-Za-z\d]+)')
-
         matches = re.findall(comment_re, link)
 
         if len(matches) == 0:
@@ -126,16 +122,15 @@ class Note(object):
                 return 'l,' + matches[0][0] + ',' + matches[0][1]
 
     @staticmethod
-    def expand_url(short_link, subreddit=None):
-        """
-        Static method that converts a usernote's URL shorthand into a full reddit
-        URL.
+    def _expand_url(short_link, subreddit=None):
+        """Static method that converts a usernote's URL shorthand into a full
+        reddit URL.
 
         Arguments:
             subreddit: the subreddit the URL is for (PRAW Subreddit object or str)
             short_link: the compressed link from a usernote (str)
 
-        Returns a String object of the full URL.
+        Returns a String of the full URL.
         """
         # Some URL structures for notes
         message_scheme = 'https://reddit.com/message/messages/{}'
@@ -161,7 +156,7 @@ class Note(object):
 
 
 class UserNotes(object):
-    """Class that represents an entire usernotes wiki page"""
+    """Represents an entire usernotes wiki page."""
 
     schema = 6  # Supported schema version
     max_page_size = 524288  # Characters
@@ -169,8 +164,7 @@ class UserNotes(object):
     page_name = 'usernotes'
 
     def __init__(self, r, subreddit, lazy_start=False):
-        """
-        Constuctor for the UserNotes class.
+        """Constuctor for the UserNotes class.
 
         Arguments:
             r: the authenticated reddit instance (PRAW Reddit Object)
@@ -188,23 +182,21 @@ class UserNotes(object):
         return "UserNotes(subreddit=\'{}\')".format(self.subreddit.display_name)
 
     def get_json(self):
-        """
-        Get the JSON stored on the usernotes wiki page.
+        """Get the JSON stored on the usernotes wiki page.
 
         Returns a dict representation of the usernotes (with the notes BLOB
         decoded).
 
         Raises:
-            praw.errors.Forbidden if the authenticated reddit session does not have
-            permission to access the wiki page.
-            praw.errors.HTTPException if an HTTP error code besides 404 returns.
+            RuntimeError if the usernotes version is incompatible with this
+                version of puni.
         """
 
         try:
             usernotes = self.subreddit.wiki[self.page_name].content_md
             notes = json.loads(usernotes)
         except NotFound:
-            self.init_notes()
+            self._init_notes()
         else:
             if notes['ver'] != self.schema:
                 raise RuntimeError(
@@ -212,14 +204,12 @@ class UserNotes(object):
                     format(notes['ver'], self.schema)
                 )
 
-            self.cached_json = self.expand_json(notes)
+            self.cached_json = self._expand_json(notes)
 
         return self.cached_json
 
-    def init_notes(self):
-        """
-        Sets up the UserNotes page with the initial JSON schema
-        """
+    def _init_notes(self):
+        """Sets up the UserNotes page with the initial JSON schema."""
         self.cached_json = {
             'ver': self.schema,
             'users': {},
@@ -232,18 +222,15 @@ class UserNotes(object):
         self.set_json('Initializing JSON via puni', True)
 
     def set_json(self, reason='', new_page=False):
-        """
-        Sends the JSON from the cache to the usernotes wiki page
+        """Sends the JSON from the cache to the usernotes wiki page.
 
         Arguments:
             reason: the change reason that will be posted to the wiki changelog
                 (str)
         Raises:
-            praw.errors.Forbidden if the authenticated reddit session does not have
-            permission to access the wiki page.
-            praw.errors.HTTPException if an HTTP error code besides 404 returns.
+            OverflowError if the new JSON data is greater than max_page_size
         """
-        compressed_json = json.dumps(self.compress_json(self.cached_json))
+        compressed_json = json.dumps(self._compress_json(self.cached_json))
 
         if len(compressed_json) > self.max_page_size:
             raise OverflowError(
@@ -267,11 +254,10 @@ class UserNotes(object):
 
     @update_cache
     def get_notes(self, user):
-        """
-        Arguments:
-            user: the user to search for in the usernotes (String)
+        """Returns a list of Note objects for the given user.
 
-        Returns a list of Note objects for the given user
+        Arguments:
+            user: the user to search for in the usernotes (str)
         """
         # Try to search for all notes on a user, return an empty list if none
         # are found.
@@ -283,44 +269,40 @@ class UserNotes(object):
                     user=user,
                     note=note['n'],
                     subreddit=self.subreddit,
-                    mod=self.mod_from_index(note['m']),
+                    mod=self._mod_from_index(note['m']),
                     link=note['l'],
-                    warning=self.warning_from_index(note['w']),
+                    warning=self._warning_from_index(note['w']),
                     note_time=note['t']
                 ))
 
             return users_notes
         except KeyError:
+            # User not found
             return []
 
     @update_cache
     def get_users(self):
-        """
-        Returns a list of all users with notes
-        """
+        """Returns a list of all users with notes"""
         return list(self.cached_json['users'].keys())
 
-    def mod_from_index(self, index):
-        """
+    def _mod_from_index(self, index):
+        """Returns the moderator name as a string.
+
         Arguments:
            index: the index in the constants array for moderators (int)
-
-        Returns the moderator name as a string
         """
         return self.cached_json['constants']['users'][index]
 
-    def warning_from_index(self, index):
-        """
+    def _warning_from_index(self, index):
+        """Returns the warning as a string
+
         Arguments:
            index: the index in the constants array for warning (int)
-
-        Returns the warning as a string
         """
         return self.cached_json['constants']['warnings'][index]
 
-    def expand_json(self, j):
-        """
-        Decompress the BLOB portion of the usernotes
+    def _expand_json(self, j):
+        """Decompress the BLOB portion of the usernotes.
 
         Arguments:
             j: the JSON returned from the wiki page (dict)
@@ -338,9 +320,8 @@ class UserNotes(object):
 
         return decompressed_json
 
-    def compress_json(self, j):
-        """
-        Compress the BLOB data portion of the usernotes
+    def _compress_json(self, j):
+        """Compress the BLOB data portion of the usernotes.
 
         Arguments:
             j: the JSON in Schema v5 format (dict)
@@ -362,8 +343,7 @@ class UserNotes(object):
 
     @update_cache
     def add_note(self, note):
-        """
-        Adds a note to the usernotes wiki page
+        """Adds a note to the usernotes wiki page.
 
         Arguments:
             note: the note to be added (Note)
@@ -372,7 +352,7 @@ class UserNotes(object):
 
         Raises:
             ValueError when the warning type of the note can not be found in the
-            stored list of warnings.
+                stored list of warnings.
         """
         notes = self.cached_json
 
@@ -396,7 +376,7 @@ class UserNotes(object):
                 notes['constants']['warnings'].append(note.warning)
                 warn_index = notes['constants']['warnings'].index(note.warning)
             else:
-                raise TypeError('Warning type not valid: ' + note.warning)
+                raise ValueError('Warning type not valid: ' + note.warning)
 
         new_note = {
             'n': note.note,
@@ -409,16 +389,13 @@ class UserNotes(object):
         try:
             notes['users'][note.username]['ns'].insert(0, new_note)
         except KeyError:
-            notes['users'][note.username] = {}
-            notes['users'][note.username]['ns'] = []
-            notes['users'][note.username]['ns'].append(new_note)
+            notes['users'][note.username] = {'ns': [new_note]}
 
         return '"create new note on user {}" via puni'.format(note.username)
 
     @update_cache
     def remove_note(self, username, index):
-        """
-        Remove a single usernote from the usernotes
+        """Remove a single usernote from the usernotes.
 
         Arguments:
             username: the user that for whom you're removing a note (str)
@@ -436,8 +413,7 @@ class UserNotes(object):
 
     @update_cache
     def remove_user(self, username):
-        """
-        Remove all of a user's notes
+        """Remove all of a user's notes.
 
         Arguments:
             username: the user to have its notes removed (str)
