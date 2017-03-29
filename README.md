@@ -22,16 +22,18 @@ toolbox ([spec here](https://github.com/creesch/reddit-moderator-toolbox/wiki/JS
 *Creating a usernotes object*
 
 ```python
-# First, define r as an authenticated PRAW Reddit instance
-sub = r.subreddit('subreddit')
+import praw
+import puni
 
+r = praw.Reddit(...)
+sub = r.subreddit('subreddit')
 un = puni.UserNotes(r, sub)
 ```
 
 *Adding a note*
 
 ```python
-#Create given note with time set to current time
+# Create given note with time set to current time
 link = 'http://www.reddit.com/message/messages/4vjx3v'
 n = puni.Note('username', 'reason', 'moderator', link, 'permban')
 un.add_note(n)
