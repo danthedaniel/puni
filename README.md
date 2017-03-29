@@ -60,18 +60,14 @@ r = praw.Reddit(...)
 sub = r.subreddit('my_subreddit')
 un = puni.UserNotes(r, sub)
 
-user_list = un.get_users()
-
-for user in user_list:
+for user in un.get_users():
     try:
         u = r.redditor(user).fullname
     except:
         print("{} is shadowbanned/deleted".format(user))
-        # User is shadowbanned or account is deleted
-        # Normally you'd use un.remove_user(), but since we are making many
-        # deletions, it's best to only make one API call for the final changes
-        # once we're at the end of the script.
-        del un.cached_json['users'][user]
+        # To prevent unnecessary API requests, you need to specify remove_user
+        # as lazy. The
+        un.remove_user(user, lazy=True)
 
 # Now update the usernotes
 un.set_json("Pruned users via puni")
