@@ -1,5 +1,4 @@
-"""
-Copyright 2017 teaearlgraycold
+"""Copyright 2017 teaearlgraycold.
 
 This file is part of puni
 
@@ -28,7 +27,7 @@ from puni.decorators import update_cache
 
 
 class Note(object):
-    """Represents an individual usernote"""
+    """Represents an individual usernote."""
 
     warnings = [
         'none',
@@ -78,13 +77,15 @@ class Note(object):
             self.warning = 'none'
 
     def __str__(self):
+        """Represent the usernote as a string."""
         return '{}: {}'.format(self.username, self.note)
 
     def __repr__(self):
+        """Format the object's representation the same as praw would."""
         return 'Note(username=\'{}\')'.format(self.username)
 
     def full_url(self):
-        """Returns the full reddit URL associated with the usernote.
+        """Return the full reddit URL associated with the usernote.
 
         Arguments:
             subreddit: the subreddit name for the note (PRAW Subreddit object)
@@ -96,8 +97,7 @@ class Note(object):
 
     @staticmethod
     def _compress_url(link):
-        """Static method that converts a reddit URL for a post, comment, or
-        message into the shorthand used by usernotes.
+        """Convert a reddit URL into the short-hand used by usernotes.
 
         Arguments:
             link: a link to a comment, submission, or message (str)
@@ -123,8 +123,7 @@ class Note(object):
 
     @staticmethod
     def _expand_url(short_link, subreddit=None):
-        """Static method that converts a usernote's URL shorthand into a full
-        reddit URL.
+        """Convert a usernote's URL short-hand into a full reddit URL.
 
         Arguments:
             subreddit: the subreddit the URL is for (PRAW Subreddit object or str)
@@ -170,6 +169,8 @@ class UserNotes(object):
             r: the authenticated reddit instance (PRAW Reddit Object)
             subreddit: the subreddit the usernotes will be pulled from (PRAW
                 Subreddit object)
+            lazy_start: whether to download the usernotes immediately upon
+                instantiation (bool)
         """
         self.r = r
         self.subreddit = subreddit
@@ -179,6 +180,7 @@ class UserNotes(object):
             self.get_json()
 
     def __repr__(self):
+        """Format the object's representation the same as praw would."""
         return "UserNotes(subreddit=\'{}\')".format(self.subreddit.display_name)
 
     def get_json(self):
@@ -191,7 +193,6 @@ class UserNotes(object):
             RuntimeError if the usernotes version is incompatible with this
                 version of puni.
         """
-
         try:
             usernotes = self.subreddit.wiki[self.page_name].content_md
             notes = json.loads(usernotes)
@@ -209,7 +210,7 @@ class UserNotes(object):
         return self.cached_json
 
     def _init_notes(self):
-        """Sets up the UserNotes page with the initial JSON schema."""
+        """Set up the UserNotes page with the initial JSON schema."""
         self.cached_json = {
             'ver': self.schema,
             'users': {},
@@ -222,7 +223,7 @@ class UserNotes(object):
         self.set_json('Initializing JSON via puni', True)
 
     def set_json(self, reason='', new_page=False):
-        """Sends the JSON from the cache to the usernotes wiki page.
+        """Send the JSON from the cache to the usernotes wiki page.
 
         Arguments:
             reason: the change reason that will be posted to the wiki changelog
@@ -254,7 +255,9 @@ class UserNotes(object):
 
     @update_cache
     def get_notes(self, user):
-        """Returns a list of Note objects for the given user.
+        """Return a list of Note objects for the given user.
+
+        Return an empty list if no notes are found.
 
         Arguments:
             user: the user to search for in the usernotes (str)
@@ -282,11 +285,11 @@ class UserNotes(object):
 
     @update_cache
     def get_users(self):
-        """Returns a list of all users with notes"""
+        """Return a list of all users with notes."""
         return list(self.cached_json['users'].keys())
 
     def _mod_from_index(self, index):
-        """Returns the moderator name as a string.
+        """Return a moderator's name given an index.
 
         Arguments:
            index: the index in the constants array for moderators (int)
@@ -294,7 +297,7 @@ class UserNotes(object):
         return self.cached_json['constants']['users'][index]
 
     def _warning_from_index(self, index):
-        """Returns the warning as a string
+        """Return a warning given an index.
 
         Arguments:
            index: the index in the constants array for warning (int)
@@ -343,7 +346,7 @@ class UserNotes(object):
 
     @update_cache
     def add_note(self, note):
-        """Adds a note to the usernotes wiki page.
+        """Add a note to the usernotes wiki page.
 
         Arguments:
             note: the note to be added (Note)
