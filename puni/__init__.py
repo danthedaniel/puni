@@ -1,5 +1,4 @@
-"""
-Copyright 2017 teaearlgraycold
+"""Copyright 2017 teaearlgraycold.
 
 This file is part of puni
 

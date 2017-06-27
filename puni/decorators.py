@@ -1,5 +1,4 @@
-"""
-Copyright 2017 teaearlgraycold
+"""Copyright 2017 teaearlgraycold.
 
 This file is part of puni
 
@@ -20,15 +19,16 @@ from functools import wraps
 
 
 def update_cache(func):
-    """Decorates functions that modify the internally stored usernotes JSON so
-    that updates are mirrored onto reddit
+    """Decorate functions that modify the internally stored usernotes JSON.
+
+    Ensures that updates are mirrored onto reddit.
 
     Arguments:
         func: the function being decorated
     """
     @wraps(func)
     def wrapper(self, *args, **kwargs):
-        """The wrapper function"""
+        """The wrapper function."""
         lazy = kwargs.get('lazy', False)
         kwargs.pop('lazy', None)
 
