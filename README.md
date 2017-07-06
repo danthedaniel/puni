@@ -17,21 +17,23 @@ toolbox ([spec here](https://github.com/creesch/reddit-moderator-toolbox/wiki/JS
 
 **Usage**:
 
-*Please read the contents of `puni/base.py` to see all functions available through puni*
+[Full documentation](https://github.com/teaearlgraycold/puni/wiki/Documentation).
 
 *Creating a usernotes object*
 
 ```python
-# First, define r as an authenticated PRAW Reddit instance
-sub = r.subreddit('subreddit')
+import praw
+import puni
 
+r = praw.Reddit(...)
+sub = r.subreddit('subreddit')
 un = puni.UserNotes(r, sub)
 ```
 
 *Adding a note*
 
 ```python
-#Create given note with time set to current time
+# Create given note with time set to current time
 link = 'http://www.reddit.com/message/messages/4vjx3v'
 n = puni.Note('username', 'reason', 'moderator', link, 'permban')
 un.add_note(n)
@@ -58,18 +60,14 @@ r = praw.Reddit(...)
 sub = r.subreddit('my_subreddit')
 un = puni.UserNotes(r, sub)
 
-user_list = un.get_users()
-
-for user in user_list:
+for user in un.get_users():
     try:
         u = r.redditor(user).fullname
     except:
         print("{} is shadowbanned/deleted".format(user))
-        # User is shadowbanned or account is deleted
-        # Normally you'd use un.remove_user(), but since we are making many
-        # deletions, it's best to only make one API call for the final changes
-        # once we're at the end of the script.
-        del un.cached_json['users'][user]
+        # To prevent unnecessary API requests, you need to specify remove_user
+        # as lazy.
+        un.remove_user(user, lazy=True)
 
 # Now update the usernotes
 un.set_json("Pruned users via puni")

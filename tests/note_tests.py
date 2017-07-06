@@ -1,9 +1,9 @@
 from puni import Note
+from nose.tools import assert_raises
 
 
 def test_note():
-    """Ensure Note class compresses URL for messages"""
-
+    """Ensure Note class compresses URL for messages."""
     n = Note(
         user='teaearlgraycold',
         note='creator of puni',
@@ -18,8 +18,7 @@ def test_note():
 
 
 def test_note_2():
-    """Ensure Note class compresses URL for submissions"""
-
+    """Ensure Note class compresses URL for submissions."""
     n = Note(
         user='teaearlgraycold',
         note='creator of puni',
@@ -34,8 +33,7 @@ def test_note_2():
 
 
 def test_note_3():
-    """Ensure Note class compresses URL for comments"""
-
+    """Ensure Note class compresses URL for comments."""
     n = Note(
         user='teaearlgraycold',
         note='creator of puni',
@@ -50,8 +48,7 @@ def test_note_3():
 
 
 def test_note_4():
-    """Ensure Note class throws exception when expanding a url without a specified subreddit"""
-
+    """Ensure Note class throws exception when expanding a url without a specified subreddit."""
     n = Note(
         user='teaearlgraycold',
         note='creator of puni',
@@ -60,8 +57,4 @@ def test_note_4():
         warning='gooduser'
     )
 
-    try:
-        n.full_url()
-        assert False
-    except ValueError:
-        pass
+    assert_raises(ValueError, n.full_url)
