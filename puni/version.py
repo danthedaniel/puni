@@ -14,9 +14,4 @@ details. You should have received a copy of the GNU General Public License along
 with puni. If not, see http://www.gnu.org/licenses/.
 """
 
-
-<<<<<<< HEAD
-__version__ = '1.1.1'
-=======
-__version__ = '1.1.0'
->>>>>>> 1f83765a58eb18e8824950e0c0fb5ebe86357cce
+__version__ = '1.1.2'
