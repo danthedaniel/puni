@@ -41,7 +41,7 @@ class Note(object):
     ]
 
     def __init__(self, user, note, subreddit=None, mod=None, link='',
-                 warning='none', note_time=int(time.time())):
+                 warning='none', note_time=None):
         """Constuctor for the Note class.
 
         Arguments:
@@ -57,7 +57,7 @@ class Note(object):
         self.username = user
         self.note = note
         self.subreddit = str(subreddit) if subreddit else None
-        self.time = note_time
+        self.time = note_time if note_time else int(time.time())
         self.moderator = mod
 
         # Compress link if necessary
