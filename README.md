@@ -72,3 +72,13 @@ for user in un.get_users():
 # Now update the usernotes
 un.set_json("Pruned users via puni")
 ```
+
+**Custom Usernotes**:
+additional usernote types can be added through a puni.ini file in the current working directory. It should be in the following format:
+
+```ini
+[USERNOTES]
+noteType1 = watch
+noteType2 = messaged
+noteType3 = warning
+```
