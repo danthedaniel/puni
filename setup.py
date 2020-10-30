@@ -27,7 +27,7 @@ setup(
     license='GPLv3',
     packages=[PACKAGE_NAME],
     install_requires=[
-        'praw >=4.0, <8.0',
+        'praw >=4.0, <7.1.0',
     ],
     tests_require=[
         'nose',
