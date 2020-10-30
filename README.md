@@ -1,5 +1,3 @@
-Fork Changes: Attempting upgrade for current versions of dependencies.
-
 PUNI
 ===
 
@@ -12,7 +10,7 @@ Built to interact with the user notes data store from the reddit moderator
 toolbox ([spec here](https://github.com/creesch/reddit-moderator-toolbox/wiki/JSON:-usernotes)).
 
 **Requirements**:
-* [PRAW](https://github.com/praw-dev/praw)
+* [PRAW](https://github.com/praw-dev/praw)(Supports up to praw-7.1.0)
 * Python 2.7, or 3.X
 
 *Note*: PUNI only supports usernotes of schema version 6.
@@ -37,7 +35,7 @@ un = puni.UserNotes(r, sub)
 ```python
 # Create given note with time set to current time
 link = 'http://www.reddit.com/message/messages/4vjx3v'
-n = puni.Note('username', 'reason', 'moderator', link, 'permban')
+n = puni.Note(user='user', note='note', mod='mod', link, warning='permban')
 un.add_note(n)
 ```
 
