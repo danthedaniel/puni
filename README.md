@@ -72,3 +72,7 @@ for user in un.get_users():
 # Now update the usernotes
 un.set_json("Pruned users via puni")
 ```
+
+**Custom Usernotes**:
+
+custom usernote types can be defined in a puni.ini file in the directory a script using puni is located in. An example puni.ini file may be found [here](puni.ini.example)
