@@ -233,10 +233,10 @@ class UserNotes(object):
         """
         compressed_json = json.dumps(self._compress_json(self.cached_json))
 
-        if len(compressed_json) > self.max_page_size:
+        if len(compressed_json) > (self.max_page_size * 2):
             raise OverflowError(
                 'Usernotes page is too large (>{0} characters)'.
-                format(self.max_page_size)
+                format((self.max_page_size * 2))
             )
 
         if new_page:
@@ -248,10 +248,21 @@ class UserNotes(object):
             # Set the page as hidden and available to moderators only
             self.subreddit.wiki[self.page_name].mod.update(False, permlevel=2)
         else:
-            self.subreddit.wiki[self.page_name].edit(
-                compressed_json,
-                reason
-            )
+            if compressed_json > self.max_page_size:
+                self.subreddit.wiki[self.page_name].edit(
+                    compressed_json,
+                    reason
+                )
+            else:
+                r.subreddit(subreddit).request(
+                    "POST",
+                    path="/r/{}/api/wiki/edit".format(subreddit),
+                    data = {
+                        "content": compressed_json,
+                        "page": usernotes,
+                        "reason": reason
+                    }
+                )
 
     @update_cache
     def get_notes(self, user):
