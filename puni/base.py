@@ -21,6 +21,7 @@ import re
 import zlib
 import base64
 import copy
+import configparser
 
 from prawcore.exceptions import NotFound
 from puni.decorators import update_cache
@@ -29,16 +30,23 @@ from puni.decorators import update_cache
 class Note(object):
     """Represents an individual usernote."""
 
-    warnings = [
-        'none',
-        'spamwatch',
-        'spamwarn',
-        'abusewarn',
-        'ban',
-        'permban',
-        'botban',
-        'gooduser'
-    ]
+    warnings = []
+    try:
+        config = configparser.ConfigParser()
+        config.read('puni.ini')
+        for key in config['USERNOTES']:
+            warnings.append(config['USERNOTES'][key])
+    except:
+        warnings = [
+            'none',
+            'spamwatch',
+            'spamwarn',
+            'abusewarn',
+            'ban',
+            'permban',
+            'botban',
+            'gooduser'
+        ]
 
     def __init__(self, user, note, subreddit=None, mod=None, link='',
                  warning='none', note_time=None):
